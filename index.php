@@ -753,32 +753,15 @@ class linkdb implements Iterator, Countable, ArrayAccess
     }
 
     // ---- Countable interface implementation
-    public function count() { return count($this->links); }
-
-    // ---- ArrayAccess interface implementation
-    public function offsetSet($offset, $value)
+    public function count()
     {
-        if (!$this->loggedin) die('You are not authorized to add a link.');
-        if (empty($value['linkdate']) || empty($value['url'])) die('Internal Error: A link should always have a linkdate and url.');
-        if (empty($offset)) die('You must specify a key.');
-        $this->links[$offset] = $value;
-        $this->urls[$value['url']]=$offset;
+        $stmt = dbConnexion::getInstance()->prepare('SELECT COUNT(*) AS nb FROM datastore;');
+        $stmt->execute();
+        $result = $stmt->fetchAll(PDO::FETCH_OBJ);
+        $stmt->closeCursor();
+        $stmt = NULL;
+        return $result[0]->nb;
     }
-    public function offsetExists($offset) { return array_key_exists($offset,$this->links); }
-    public function offsetUnset($offset)
-    {
-        if (!$this->loggedin) die('You are not authorized to delete a link.');
-        $url = $this->links[$offset]['url']; unset($this->urls[$url]);
-        unset($this->links[$offset]);
-    }
-    public function offsetGet($offset) { return isset($this->links[$offset]) ? $this->links[$offset] : null; }
-
-    // ---- Iterator interface implementation
-    function rewind() { $this->keys=array_keys($this->links); rsort($this->keys); $this->position=0; } // Start over for iteration, ordered by date (latest first).
-    function key() { return $this->keys[$this->position]; } // current key
-    function current() { return $this->links[$this->keys[$this->position]]; } // current value
-    function next() { ++$this->position; } // go to next item
-    function valid() { return isset($this->keys[$this->position]); }    // Check if current position is valid.
 
     // ---- Misc methods
     private function checkdb() // Check if db directory and file exists.
@@ -812,12 +795,33 @@ class linkdb implements Iterator, Countable, ArrayAccess
         foreach($this->links as $link) { $this->urls[$link['url']]=$link['linkdate']; }
     }
 
-    // Save database from memory to disk.
-    public function savedb()
+    public function setLink($link)
     {
-        if (!$this->loggedin) die('You are not authorized to change the database.');
-        file_put_contents($GLOBALS['config']['DATASTORE'], PHPPREFIX.base64_encode(gzdeflate(serialize($this->links))).PHPSUFFIX);
-        invalidateCaches();
+        $query = "INSERT INTO datastore (title, url, description, private, linkdate, smallhash, tags, author) 
+                  VALUES (:title, :url, :description, :private, :linkdate, :smallhash, :tags, :author)
+                  ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id),
+                  title = VALUES(title), url = VALUES(url), description = VALUES(description),
+                  private = VALUES(private), linkdate = VALUES(linkdate), smallhash = VALUES(smallhash),
+                  tag = VALUES(tags), author = VALUES(author), Dummy = NOT dummy;";
+        $stmt->bindValue(':title', $link['title'], PDO::PARAM_STR);
+        $stmt->bindValue(':url', $link['url'], PDO::PARAM_STR);
+        $stmt->bindValue(':description', $link['description'], PDO::PARAM_STR);
+        $stmt->bindValue(':private', $link['private'], PDO::PARAM_INT);
+        $stmt->bindValue(':linkdate', $link['linkdate'], PDO::PARAM_STR);
+        $stmt->bindValue(':smallhash', smallhash($link['linkdate']), PDO::PARAM_STR);
+        $stmt->bindValue(':tags', $link['tags'], PDO::PARAM_STR);
+        $stmt->bindValue(':author', $link['author'], PDO::PARAM_STR);
+        $stmt->execute();
+        $this->links = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt->closeCursor();
+        $stmt = NULL;
+    }
+
+    public function delLink($link)
+    {
+        $query = 'DELETE FROM datastore WHERE smallhash = :smallhash;'
+        $stmt->bindValue(':smallhash', smallhash($link['linkdate']));
+        $stmt->execute();
     }
 
     // Returns the link for a given URL (if it exists). false it does not exist.
@@ -1551,8 +1555,7 @@ function renderPage()
         $link = array('title'=>trim($_POST['lf_title']),'url'=>$url,'description'=>trim($_POST['lf_description']),'private'=>(isset($_POST['lf_private']) ? 1 : 0),
                       'linkdate'=>$linkdate,'tags'=>str_replace(',',' ',$tags));
         if ($link['title']=='') $link['title']=$link['url']; // If title is empty, use the URL as title.
-        $LINKSDB[$linkdate] = $link;
-        $LINKSDB->savedb(); // save to disk
+        $LINKSDB->setink($link);
         pubsubhub();
 
         // If we are called from the bookmarklet, we must close the popup:
@@ -1582,8 +1585,7 @@ function renderPage()
         // - confirmation is handled by javascript
         // - we are protected from XSRF by the token.
         $linkdate=$_POST['lf_linkdate'];
-        unset($LINKSDB[$linkdate]);
-        $LINKSDB->savedb(); // save to disk
+        $LINKSDB->delLink($linkdate);
 
         // If we are called from the bookmarklet, we must close the popup:
         if (isset($_GET['source']) && $_GET['source']=='bookmarklet') { echo '<script language="JavaScript">self.close();</script>'; exit; }
