@@ -678,6 +678,41 @@ class pageBuilder
     }
 }
 
+class dbConnexion
+{
+    private static $instance;
+    private static $dbHost;
+    private static $dbName;
+    private static $dbUser;
+    private static $dbPass;
+
+    public static function getInstance(){
+        if(!isset(self::$instance)){
+            self::setDbInfos();
+            self::setInstance();
+        }
+        return self::$instance;
+    }
+
+    private static function setInstance()
+    {
+        try {
+            self::$instance = new PDO('mysql:host=' . self::$dbHost . ';dbname=' . self::$dbName, self::$dbUser, self::$dbPass);
+            self::$instance->query("SET NAMES 'utf8'");
+        } catch (Exception $e) {
+            print "Erreur !: " . $e->getMessage() . "<br/>";
+            die();
+        }
+    }
+
+    private static function setDbInfos()
+    {
+        self::$dbHost = $GLOBALS['config']['dbHost'];
+        self::$dbName = $GLOBALS['config']['dbName'];
+        self::$dbUser = $GLOBALS['config']['dbUser'];
+        self::$dbPass = $GLOBALS['config']['dbPass'];
+    }
+
 // ------------------------------------------------------------------------------------------
 /* Data storage for links.
    This object behaves like an associative array.
@@ -762,17 +797,15 @@ class linkdb implements Iterator, Countable, ArrayAccess
     // Read database from disk to memory
     private function readdb()
     {
-        // Read data
-        $this->links=(file_exists($GLOBALS['config']['DATASTORE']) ? unserialize(gzinflate(base64_decode(substr(file_get_contents($GLOBALS['config']['DATASTORE']),strlen(PHPPREFIX),-strlen(PHPSUFFIX))))) : array() );
-        // Note that gzinflate is faster than gzuncompress. See: http://www.php.net/manual/en/function.gzdeflate.php#96439
+        $where = (!$this->loggedin) ? 'WHERE private != 0' : '';
 
-        // If user is not logged in, filter private links.
-        if (!$this->loggedin)
-        {
-            $toremove=array();
-            foreach($this->links as $link) { if ($link['private']!=0) $toremove[]=$link['linkdate']; }
-            foreach($toremove as $linkdate) { unset($this->links[$linkdate]); }
-        }
+        // Read data
+        $query = 'SELECT id, title, url, description, private, linkdate, smallhash, tags, author FROM datastore' . $where . ';';
+        $stmt  = dbConnexion::getInstance()->prepare($query);
+        $stmt->execute();
+        $this->links = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt->closeCursor();
+        $stmt = NULL;
 
         // Keep the list of the mapping URLs-->linkdate up-to-date.
         $this->urls=array();
@@ -790,7 +823,16 @@ class linkdb implements Iterator, Countable, ArrayAccess
     // Returns the link for a given URL (if it exists). false it does not exist.
     public function getLinkFromUrl($url)
     {
-        if (isset($this->urls[$url])) return $this->links[$this->urls[$url]];
+        $query = 'SELECT url FROM datastore WHERE url = ' . $url . ';';
+        $stmt  = dbConnexion::getInstance()->prepare($query);
+        $stmt->execute();
+        $filtered = $stmt->fetchAll(PDO::FETCH_COLUMN, 0);
+        $stmt->closeCursor();
+        $stmt = NULL;
+
+        if (is_array($filtered)) {
+            return $filtered[0];
+        }
         return false;
     }
 
@@ -798,19 +840,19 @@ class linkdb implements Iterator, Countable, ArrayAccess
     // eg. print_r($mydb->filterFulltext('hollandais'));
     public function filterFulltext($searchterms)
     {
-        // FIXME: explode(' ',$searchterms) and perform a AND search.
         // FIXME: accept double-quotes to search for a string "as is" ?
-        $filtered=array();
-        $s = strtolower($searchterms);
-        foreach($this->links as $l)
-        {
-            $found=   (strpos(strtolower($l['title']),$s)!==false)
-                   || (strpos(strtolower($l['description']),$s)!==false)
-                   || (strpos(strtolower($l['url']),$s)!==false)
-                   || (strpos(strtolower($l['tags']),$s)!==false);
-            if ($found) $filtered[$l['linkdate']] = $l;
+        $terms = explode(' ', strtolower($searchterms));
+        foreach ($terms as $key => $term) {
+            $like .= '(title LIKE %' . $term . '% OR description LIKE %' . $term . '% OR  url LIKE %' . $term . '%  OR tags LIKE %' . $term . '%) OR ';
         }
-        krsort($filtered);
+        $query = 'SELECT id, title, url, description, private, linkdate, smallhash, tags, author FROM datastore WHERE ' . rtrim($like, ' OR ') . ';';
+        $stmt  = dbConnexion::getInstance()->prepare($query);
+        $stmt->execute();
+        $filtered = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt->closeCursor();
+        $stmt = NULL;
+
+        //krsort($filtered);
         return $filtered;
     }
 
@@ -819,16 +861,19 @@ class linkdb implements Iterator, Countable, ArrayAccess
     // eg. print_r($mydb->filterTags('linux programming'));
     public function filterTags($tags,$casesensitive=false)
     {
-        $t = str_replace(',',' ',($casesensitive?$tags:strtolower($tags)));
-        $searchtags=explode(' ',$t);
-        $filtered=array();
-        foreach($this->links as $l)
-        {
-            $linktags = explode(' ',($casesensitive?$l['tags']:strtolower($l['tags'])));
-            if (count(array_intersect($linktags,$searchtags)) == count($searchtags))
-                $filtered[$l['linkdate']] = $l;
+        $tags  = str_replace(',', ' ', ($casesensitive ? $tags : strtolower($tags)));
+        $terms = explode(' ', $tags);
+        foreach ($terms as $key => $term) {
+            $like .= '(tags LIKE %' . $term . '%) OR ';
         }
-        krsort($filtered);
+        $query = 'SELECT id, title, url, description, private, linkdate, smallhash, tags, author FROM datastore WHERE ' . rtrim($like, ' OR ') . ';';
+        $stmt  = dbConnexion::getInstance()->prepare($query);
+        $stmt->execute();
+        $filtered = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt->closeCursor();
+        $stmt = NULL;
+
+        //krsort($filtered);
         return $filtered;
     }
 
@@ -837,27 +882,27 @@ class linkdb implements Iterator, Countable, ArrayAccess
     // eg. print_r($mydb->filterDay('20120125'));
     public function filterDay($day)
     {
-        $filtered=array();
-        foreach($this->links as $l)
-        {
-            if (startsWith($l['linkdate'],$day)) $filtered[$l['linkdate']] = $l;
-        }
-        ksort($filtered);
+        $query = 'SELECT id, title, url, description, private, linkdate, smallhash, tags, author FROM datastore WHERE linkdate LIKE ' . $day . '% ;';
+        $stmt  = dbConnexion::getInstance()->prepare($query);
+        $stmt->execute();
+        $filtered = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt->closeCursor();
+        $stmt = NULL;
+
+        //krsort($filtered);
         return $filtered;
     }
     // Filter by smallHash.
     // Only 1 article is returned.
     public function filterSmallHash($smallHash)
     {
-        $filtered=array();
-        foreach($this->links as $l)
-        {
-            if ($smallHash==smallHash($l['linkdate'])) // Yes, this is ugly and slow
-            {
-                $filtered[$l['linkdate']] = $l;
-                return $filtered;
-            }
-        }
+        $query = 'SELECT id, title, url, description, private, linkdate, smallhash, tags, author FROM datastore WHERE smallhash = ' . $smallHash . ';';
+        $stmt  = dbConnexion::getInstance()->prepare($query);
+        $stmt->execute();
+        $filtered = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt->closeCursor();
+        $stmt = NULL;
+
         return $filtered;
     }
 
@@ -865,11 +910,24 @@ class linkdb implements Iterator, Countable, ArrayAccess
     // Output: associative array key=tags, value=0
     public function allTags()
     {
-        $tags=array();
-        foreach($this->links as $link)
-            foreach(explode(' ',$link['tags']) as $tag)
-                if (!empty($tag)) $tags[$tag]=(empty($tags[$tag]) ? 1 : $tags[$tag]+1);
-        arsort($tags); // Sort tags by usage (most used tag first)
+        // Récupère tous les tags et les ajoute dans un tableau global
+        $tagsToArray = function($string)
+        {
+            $elements = explode(' ', $string);
+            $all      = array_merge((array)$all, (array)$elements);
+            return $string;
+        }
+
+        $query = 'SELECT tags FROM datastore;';
+        $stmt  = dbConnexion::getInstance()->prepare($query);
+        $stmt->execute();
+        $filtered = $stmt->fetchAll(PDO::FETCH_FUNC, $tagsToArray);
+        $stmt->closeCursor();
+        $stmt = NULL;
+
+        if (is_array($all)) {
+            $tags = array_count_values($all);
+        }
         return $tags;
     }
 
@@ -877,12 +935,18 @@ class linkdb implements Iterator, Countable, ArrayAccess
     // Output: An array containing days (in format YYYYMMDD).
     public function days()
     {
-        $linkdays=array();
-        foreach(array_keys($this->links) as $day)
+        $returnDate = function($linkdate)
         {
-            $linkdays[substr($day,0,8)]=0;
+            return substr($link, 0, 8);
         }
-        $linkdays=array_keys($linkdays);
+
+        $query = 'SELECT linkdate FROM datastore;';
+        $stmt  = dbConnexion::getInstance()->prepare($query);
+        $stmt->execute();
+        $linkdays = $stmt->fetchAll(PDO::FETCH_FUNC, $returnDate);
+        $stmt->closeCursor();
+        $stmt = NULL;
+
         sort($linkdays);
         return $linkdays;
     }
