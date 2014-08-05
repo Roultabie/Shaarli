@@ -515,11 +515,15 @@ function endsWith($haystack,$needle,$case=true)
 /*  Converts a linkdate time (YYYYMMDD_HHMMSS) of an article to a timestamp (Unix epoch)
     (used to build the ADD_DATE attribute in Netscape-bookmarks file)
     PS: I could have used strptime(), but it does not exist on Windows. I'm too kind. */
-function linkdate2timestamp($linkdate)
+function linkdate2timestamp($d)
 {
-    $Y=$M=$D=$h=$m=$s=0;
-    $r = sscanf($linkdate,'%4d%2d%2d_%2d%2d%2d',$Y,$M,$D,$h,$m,$s);
-    return mktime($h,$m,$s,$M,$D,$Y);
+    $h = date('H', strtotime($d));
+    $i = date('i', strtotime($d));
+    $s = date('s', strtotime($d));
+    $n = date('n', strtotime($d));
+    $j = date('j', strtotime($d));
+    $y = date('Y', strtotime($d));
+    return mktime($h, $i, $s, $n, $j, $y);
 }
 
 /*  Converts a linkdate time (YYYYMMDD_HHMMSS) of an article to a RFC822 date.
@@ -545,7 +549,6 @@ function linkdate2locale($linkdate)
     // Note that if you use a local which is not installed on your webserver,
     // the date will not be displayed in the chosen locale, but probably in US notation.
 }
-
 // Parse HTTP response headers and return an associative array.
 function http_parse_headers_shaarli( $headers )
 {
@@ -749,12 +752,17 @@ class linkdb
     private $keys;  // List of linkdate keys (for the Iterator interface implementation)
     private $position; // Position in the $this->keys array. (for the Iterator interface implementation.)
     private $loggedin; // Is the used logged in ? (used to filter private links)
+    private $dates;
+    public $nbLinks;
+    public $nbPages;
+    public $currentPage;
 
     // Constructor:
     function __construct($isLoggedIn)
     // Input : $isLoggedIn : is the used logged in ?
     {
         $this->loggedin = $isLoggedIn;
+        $this->returnDbInfos($_GET['page']);
         //$this->nbLinks = $this->count();
         //
     }
@@ -771,47 +779,35 @@ class linkdb
     }
 
     // ---- Misc methods
-    private function checkdb() // Check if db directory and file exists.
+    private function returnDbInfos($page)
     {
-        /*if (!file_exists($GLOBALS['config']['DATASTORE'])) // Create a dummy database for example.
-        {
-             $this->links = array();
-             $link = array('title'=>'Shaarli - sebsauvage.net','url'=>'http://sebsauvage.net/wiki/doku.php?id=php:shaarli','description'=>'Welcome to Shaarli ! This is a bookmark. To edit or delete me, you must first login.','private'=>0,'linkdate'=>'20110914_190000','tags'=>'opensource software');
-             $this->links[$link['linkdate']] = $link;
-             $link = array('title'=>'My secret stuff... - Pastebin.com','url'=>'http://sebsauvage.net/paste/?8434b27936c09649#bR7XsXhoTiLcqCpQbmOpBi3rq2zzQUC5hBI7ZT1O3x8=','description'=>'SShhhh!!  I\'m a private link only YOU can see. You can delete me too.','private'=>1,'linkdate'=>'20110914_074522','tags'=>'secretstuff');
-             $this->links[$link['linkdate']] = $link;
-             file_put_contents($GLOBALS['config']['DATASTORE'], PHPPREFIX.base64_encode(gzdeflate(serialize($this->links))).PHPSUFFIX); // Write database to disk
-        }*/
-    }
-
-    private function returnLinksFirstDate($page = '')
-    {
-        $where = (!$this->loggedin) ? 'WHERE private != 0' : '';
+        $where = (!$this->loggedin) ? 'WHERE private != 1' : '';
         $query = 'SELECT linkdate FROM datastore ' . $where .' ORDER BY linkdate DESC;';
         $stmt  = dbConnexion::getInstance()->prepare($query);
         $stmt->execute();
         $nb    = $stmt->rowCount();
+        $this->dates         = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $nbPages       = ceil((int)$nb / (int)$_SESSION['LINKS_PER_PAGE']);
         $this->nbPages = ($nbPages === 0) ? 1 : $nbPages;
         $this->nbLinks = $nb;
-        $dates         = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        //$key           = $page - 1;
         $page           = (empty($page)) ? 0 : $page;
         $page           = ($page < 0) ? 0 : $page;
         $page           = ($page > $this->nbLinks) ? $this->nbLinks : $page;
-        $key            = $page;
-        $this->page    = $key;
-        $stmt->closeCursor();
-        $stmt          = NULL;
-        //debug($dates);
-        return $dates[$key]['linkdate'];
+        $this->currentPage    = $page + 1;
+    }
+
+    private function returnFirstLink()
+    {
+        
+        $key = ceil(($this->currentPage - 1) * $_SESSION['LINKS_PER_PAGE']);
+        return $this->dates[$key]['linkdate'];
     }
 
     // Read database from disk to memory
-    public function returnLinks($page = '')
+    public function returnLinks()
     {
-        $where    = (!$this->loggedin) ? 'private != 0 AND' : '';
-        $linkdate = $this->returnLinksFirstDate($page);
+        $where    = (!$this->loggedin) ? 'private != 1 AND' : '';
+        $linkdate = $this->returnFirstLink();
         $limit    = $_SESSION['LINKS_PER_PAGE'];
 
         $query = "SELECT id, title, url, description, private, linkdate, smallhash, tags, author FROM datastore
@@ -1913,42 +1909,12 @@ function buildLinkList($PAGE,$LINKSDB)
         $linksToDisplay=$tmp;
     }
 
-    // ---- Handle paging.
-    /* Can someone explain to me why you get the following error when using array_keys() on an object which implements the interface ArrayAccess ???
-       "Warning: array_keys() expects parameter 1 to be array, object given in ... "
-       If my class implements ArrayAccess, why won't array_keys() accept it ?  ( $keys=array_keys($linksToDisplay); )
-    */
-    $keys=array(); foreach($linksToDisplay as $key=>$value) { $keys[]=$key; } // Stupid and ugly. Thanks php.
-
+    //debug($linksToDisplay);
     // If there is only a single link, we change on-the-fly the title of the page.
-    if (count($linksToDisplay)==1) $GLOBALS['pagetitle'] = $linksToDisplay[$keys[0]]['title'].' - '.$GLOBALS['title'];
+    if (count($linksToDisplay)==1) $GLOBALS['pagetitle'] = $linksToDisplay[0]['title'].' - '.$GLOBALS['title'];
 
-    // Select articles according to paging.
-    /*$pagecount = ceil(count($LINKSDB->nbLinks) / $_SESSION['LINKS_PER_PAGE']);
-    $pagecount = ($pagecount == 0) ? 1 : $pagecount;
-    $page      = empty($_GET['page']) ? 1 : intval($_GET['page']);
-    $page      = ($page < 1) ? 1 : $page ;
-    $page      = ($page > $pagecount) ? $pagecount : $page;
-    $linkDisp  = $LINKSDB->readdb($page);*/
-    // $i = ($page-1)*$_SESSION['LINKS_PER_PAGE']; // Start index.
-    // $end = $i+$_SESSION['LINKS_PER_PAGE'];
-    // $linkDisp=array(); // Links to display
-    // while ($i<$end && $i<count($keys))
-    // {
-    //     $link = $linksToDisplay[$keys[$i]];
-    //     $link['description']=nl2br(keepMultipleSpaces(text2clickable(htmlspecialchars($link['description']))));
-    //     $title=$link['title'];
-    //     $classLi =  $i%2!=0 ? '' : 'publicLinkHightLight';
-    //     $link['class'] = ($link['private']==0 ? $classLi : 'private');
-    //     $link['localdate']=linkdate2locale($link['linkdate']);
-    //     $taglist = explode(' ',$link['tags']);
-    //     uasort($taglist, 'strcasecmp');
-    //     $link['taglist']=$taglist;
-    //     $linkDisp[$keys[$i]] = $link;
-    //     $i++;
-    // }
     $linkDisp = $LINKSDB->returnLinks($_GET['page']);
-    $page     = $LINKSDB->page;
+    $page     = $LINKSDB->currentPage;
     $nbPages  = $LINKSDB->nbPages;
     $nbLinks  = $LINKSDB->nbLinks;
 
@@ -1956,8 +1922,8 @@ function buildLinkList($PAGE,$LINKSDB)
     $searchterm= ( empty($_GET['searchterm']) ? '' : '&searchterm='.$_GET['searchterm'] );
     $searchtags= ( empty($_GET['searchtags']) ? '' : '&searchtags='.$_GET['searchtags'] );
     $paging='';
-    $previous_page_url=''; if ($i!=count($keys)) $previous_page_url='?page='.($page+1).$searchterm.$searchtags;
-    $next_page_url='';if ($page>1) $next_page_url='?page='.($page-1).$searchterm.$searchtags;
+    $previous_page_url = ($nbPages > 1 && $currentPage < $nbPages) ? '?page=' . ($page+1) . $searchterm . $searchtags : '';
+    $next_page_url     = ($nbPages > 1 && $currentPage > 1) ? '?page=' . ($page-1) . $searchterm . $searchtags : '';
 
     $token = ''; if (isLoggedIn()) $token=getToken();
 
