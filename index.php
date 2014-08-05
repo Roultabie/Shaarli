@@ -1922,8 +1922,8 @@ function buildLinkList($PAGE,$LINKSDB)
     $searchterm= ( empty($_GET['searchterm']) ? '' : '&searchterm='.$_GET['searchterm'] );
     $searchtags= ( empty($_GET['searchtags']) ? '' : '&searchtags='.$_GET['searchtags'] );
     $paging='';
-    $previous_page_url = ($nbPages > 1 && $currentPage < $nbPages) ? '?page=' . ($page+1) . $searchterm . $searchtags : '';
-    $next_page_url     = ($nbPages > 1 && $currentPage > 1) ? '?page=' . ($page-1) . $searchterm . $searchtags : '';
+    $previous_page_url = ($nbPages > 1 && $page < $nbPages) ? '?page=' . ($page) . $searchterm . $searchtags : '';
+    $next_page_url     = ($nbPages > 1 && $page > 1) ? '?page=' . ($page-2) . $searchterm . $searchtags : '';
 
     $token = ''; if (isLoggedIn()) $token=getToken();
 
