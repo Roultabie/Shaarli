@@ -780,7 +780,6 @@ class linkdb
         $stmt->closeCursor();
         $stmt = NULL;
         //$this->nbLinks = $result[0]->nb;
-        debug($query);
         return $result[0]->nb;
     }
 
@@ -802,7 +801,6 @@ class linkdb
         $this->currentPage    = $page + 1;
         $key = ceil(($this->currentPage - 1) * $_SESSION['LINKS_PER_PAGE']);
         $this->firstLink = $this->dates[$key]['linkdate'];
-        debug($query);
     }
 
     private function returnFirstLink()
@@ -825,7 +823,6 @@ class linkdb
         $options = (!empty($this->where)) ? 'WHERE ' . $this->where . ' AND' : 'WHERE';
         $query = "SELECT id, title, url, description, private, linkdate, smallhash, tags, author FROM datastore
                  " . $options . " linkdate <= '" . $linkdate . "' ORDER BY linkdate DESC LIMIT " . $_SESSION['LINKS_PER_PAGE'] . ";";
-        debug($query);
         $stmt  = dbConnexion::getInstance()->prepare($query);
         $stmt->execute();
         $links = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -898,7 +895,6 @@ class linkdb
         $query = "SELECT title, url, description, private, linkdate, smallhash, tags, author 
                   FROM datastore 
                   WHERE linkdate <= '" . $linkdate . "' AND (" . $options . ") ORDER BY linkdate DESC LIMIT " . $_SESSION['LINKS_PER_PAGE'] . ";";
-        debug($query);
         $stmt  = dbConnexion::getInstance()->prepare($query);
         $stmt->execute();
         $filtered = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -927,7 +923,6 @@ class linkdb
         $query = "SELECT title, url, description, private, linkdate, smallhash, tags, author 
                   FROM datastore 
                   WHERE linkdate <= '" . $linkdate . "' AND (" . $options . ") ORDER BY linkdate DESC LIMIT " . $_SESSION['LINKS_PER_PAGE'] . ";";
-        debug($query);
         $stmt  = dbConnexion::getInstance()->prepare($query);
         $stmt->execute();
         $filtered = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -1925,7 +1920,6 @@ function buildLinkList($PAGE,$LINKSDB)
     }
     else {
         $linksToDisplay = $LINKSDB->returnLinks($_GET['page']);  // otherwise, display without filtering.
-        //debug($linksToDisplay);
     }
     // Option: Show only private links
     if (!empty($_SESSION['privateonly']))
@@ -1938,7 +1932,6 @@ function buildLinkList($PAGE,$LINKSDB)
         $linksToDisplay=$tmp;
     }
 
-    //debug($linksToDisplay);
     // If there is only a single link, we change on-the-fly the title of the page.
     if (count($linksToDisplay)==1) $GLOBALS['pagetitle'] = $linksToDisplay[0]['title'].' - '.$GLOBALS['title'];
 
