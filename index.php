@@ -756,62 +756,76 @@ class linkdb
     public $nbLinks;
     public $nbPages;
     public $currentPage;
+    private $where;
+    public $resultCount;
 
     // Constructor:
     function __construct($isLoggedIn)
     // Input : $isLoggedIn : is the used logged in ?
     {
-        $this->loggedin = $isLoggedIn;
-        $this->returnDbInfos($_GET['page']);
+        $this->isLoggedIn($isLoggedIn);
+        $this->nbLinks = $this->returnNb();
         //$this->nbLinks = $this->count();
         //
     }
 
     // ---- Countable interface implementation
-    public function count()
+    public function returnNb($options = '')
     {
-        $stmt = dbConnexion::getInstance()->prepare('SELECT COUNT(*) AS nb FROM datastore;');
+        $options = (!empty($options)) ? 'WHERE ' . $options : '';
+        $query = 'SELECT COUNT(*) AS nb FROM datastore ' . $options .';';
+        $stmt = dbConnexion::getInstance()->prepare($query);
         $stmt->execute();
         $result = $stmt->fetchAll(PDO::FETCH_OBJ);
         $stmt->closeCursor();
         $stmt = NULL;
+        //$this->nbLinks = $result[0]->nb;
+        debug($query);
         return $result[0]->nb;
     }
 
     // ---- Misc methods
-    private function returnDbInfos($page)
+    private function returnCurrentInfos($options = '')
     {
-        $where = (!$this->loggedin) ? 'WHERE private != 1' : '';
-        $query = 'SELECT linkdate FROM datastore ' . $where .' ORDER BY linkdate DESC;';
+        $page = $_GET['page'];
+        $options = (!empty($options)) ? 'WHERE ' . $options : '';
+        $query = 'SELECT linkdate FROM datastore ' . $options.' ORDER BY linkdate DESC;';
         $stmt  = dbConnexion::getInstance()->prepare($query);
         $stmt->execute();
         $nb    = $stmt->rowCount();
         $this->dates         = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $nbPages       = ceil((int)$nb / (int)$_SESSION['LINKS_PER_PAGE']);
         $this->nbPages = ($nbPages === 0) ? 1 : $nbPages;
-        $this->nbLinks = $nb;
         $page           = (empty($page)) ? 0 : $page;
         $page           = ($page < 0) ? 0 : $page;
         $page           = ($page > $this->nbLinks) ? $this->nbLinks : $page;
         $this->currentPage    = $page + 1;
+        $key = ceil(($this->currentPage - 1) * $_SESSION['LINKS_PER_PAGE']);
+        $this->firstLink = $this->dates[$key]['linkdate'];
+        debug($query);
     }
 
     private function returnFirstLink()
     {
-        
         $key = ceil(($this->currentPage - 1) * $_SESSION['LINKS_PER_PAGE']);
         return $this->dates[$key]['linkdate'];
+    }
+
+    private function isLoggedIn($isLoggedIn)
+    {
+        $this->loggedin = $isLoggedIn;
+        $this->where    = (!$this->loggedin) ? 'private != 1' : '';
     }
 
     // Read database from disk to memory
     public function returnLinks()
     {
-        $where    = (!$this->loggedin) ? 'private != 1 AND' : '';
+        $this->returnCurrentInfos();
         $linkdate = $this->returnFirstLink();
-        $limit    = $_SESSION['LINKS_PER_PAGE'];
-
+        $options = (!empty($this->where)) ? 'WHERE ' . $this->where . ' AND' : 'WHERE';
         $query = "SELECT id, title, url, description, private, linkdate, smallhash, tags, author FROM datastore
-                 WHERE " . $where . " linkdate <= '" . $linkdate . "' ORDER BY linkdate DESC LIMIT " . $limit . ";";
+                 " . $options . " linkdate <= '" . $linkdate . "' ORDER BY linkdate DESC LIMIT " . $_SESSION['LINKS_PER_PAGE'] . ";";
+        debug($query);
         $stmt  = dbConnexion::getInstance()->prepare($query);
         $stmt->execute();
         $links = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -874,9 +888,17 @@ class linkdb
         // FIXME: accept double-quotes to search for a string "as is" ?
         $terms = explode(' ', strtolower($searchterms));
         foreach ($terms as $key => $term) {
-            $like .= '(title LIKE %' . $term . '% OR description LIKE %' . $term . '% OR  url LIKE %' . $term . '%  OR tags LIKE %' . $term . '%) OR ';
+            $like .= '(title LIKE "%' . $term . '%" OR description LIKE "%' . $term . '%" OR  url LIKE "%' . $term . '%"  OR tags LIKE "%' . $term . '%") OR ';
         }
-        $query = 'SELECT id, title, url, description, private, linkdate, smallhash, tags, author FROM datastore WHERE ' . rtrim($like, ' OR ') . ';';
+        $options  = (!empty($this->where)) ? $this->where . ' AND ': '';
+        $options .= rtrim($like, ' OR ');
+        $this->returnCurrentInfos($options);
+        $this->resultCount = $this->returnNb($options);
+        $linkdate = $this->returnFirstLink();
+        $query = "SELECT title, url, description, private, linkdate, smallhash, tags, author 
+                  FROM datastore 
+                  WHERE linkdate <= '" . $linkdate . "' AND (" . $options . ") ORDER BY linkdate DESC LIMIT " . $_SESSION['LINKS_PER_PAGE'] . ";";
+        debug($query);
         $stmt  = dbConnexion::getInstance()->prepare($query);
         $stmt->execute();
         $filtered = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -895,16 +917,23 @@ class linkdb
         $tags  = str_replace(',', ' ', ($casesensitive ? $tags : strtolower($tags)));
         $terms = explode(' ', $tags);
         foreach ($terms as $key => $term) {
-            $like .= '(tags LIKE %' . $term . '%) OR ';
+            $like .= '(tags LIKE "%' . $term . '%") OR ';
         }
-        $query = 'SELECT id, title, url, description, private, linkdate, smallhash, tags, author FROM datastore WHERE ' . rtrim($like, ' OR ') . ';';
+        $options  = (!empty($this->where)) ? $this->where . ' AND ': '';
+        $options .= rtrim($like, ' OR ');
+        $this->returnCurrentInfos($options);
+        $this->resultCount = $this->returnNb($options);
+        $linkdate = $this->returnFirstLink();
+        $query = "SELECT title, url, description, private, linkdate, smallhash, tags, author 
+                  FROM datastore 
+                  WHERE linkdate <= '" . $linkdate . "' AND (" . $options . ") ORDER BY linkdate DESC LIMIT " . $_SESSION['LINKS_PER_PAGE'] . ";";
+        debug($query);
         $stmt  = dbConnexion::getInstance()->prepare($query);
         $stmt->execute();
         $filtered = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $stmt->closeCursor();
         $stmt = NULL;
 
-        //krsort($filtered);
         return $filtered;
     }
 
@@ -927,7 +956,7 @@ class linkdb
     // Only 1 article is returned.
     public function filterSmallHash($smallHash)
     {
-        $query = 'SELECT id, title, url, description, private, linkdate, smallhash, tags, author FROM datastore WHERE smallhash = ' . $smallHash . ';';
+        $query = 'SELECT title, url, description, private, linkdate, smallhash, tags, author FROM datastore WHERE smallhash = ' . $smallHash . ';';
         $stmt  = dbConnexion::getInstance()->prepare($query);
         $stmt->execute();
         $filtered = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -1894,10 +1923,10 @@ function buildLinkList($PAGE,$LINKSDB)
         }
         $search_type='permalink';
     }
-    else
-        $linksToDisplay = $LINKSDB->returnLinks();  // otherwise, display without filtering.
+    else {
+        $linksToDisplay = $LINKSDB->returnLinks($_GET['page']);  // otherwise, display without filtering.
         //debug($linksToDisplay);
-
+    }
     // Option: Show only private links
     if (!empty($_SESSION['privateonly']))
     {
@@ -1913,7 +1942,7 @@ function buildLinkList($PAGE,$LINKSDB)
     // If there is only a single link, we change on-the-fly the title of the page.
     if (count($linksToDisplay)==1) $GLOBALS['pagetitle'] = $linksToDisplay[0]['title'].' - '.$GLOBALS['title'];
 
-    $linkDisp = $LINKSDB->returnLinks($_GET['page']);
+    $linkDisp = $linksToDisplay;
     $page     = $LINKSDB->currentPage;
     $nbPages  = $LINKSDB->nbPages;
     $nbLinks  = $LINKSDB->nbLinks;
@@ -1933,7 +1962,7 @@ function buildLinkList($PAGE,$LINKSDB)
     $PAGE->assign('next_page_url',$next_page_url);
     $PAGE->assign('page_current',$page);
     $PAGE->assign('page_max',$nbPages);
-    $PAGE->assign('result_count',count($linksToDisplay));
+    $PAGE->assign('result_count',$LINKSDB->resultCount);
     $PAGE->assign('search_type',$search_type);
     $PAGE->assign('search_crits',$search_crits);
     $PAGE->assign('redirector',empty($GLOBALS['redirector']) ? '' : $GLOBALS['redirector']); // optional redirector URL
