@@ -937,14 +937,14 @@ class linkdb
     // eg. print_r($mydb->filterDay('20120125'));
     public function filterDay($day)
     {
-        $query = 'SELECT id, title, url, description, private, linkdate, smallhash, tags, author FROM datastore WHERE linkdate LIKE ' . $day . '% ;';
+        $query = 'SELECT id, title, url, description, private, linkdate, smallhash, tags, author FROM datastore WHERE linkdate LIKE "' . $day . '%" ;';
         $stmt  = dbConnexion::getInstance()->prepare($query);
         $stmt->execute();
         $filtered = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $stmt->closeCursor();
         $stmt = NULL;
-
-        //krsort($filtered);
+        //debug($query);
+        //debug($filtered);
         return $filtered;
     }
     // Filter by smallHash.
@@ -992,7 +992,7 @@ class linkdb
     {
         $returnDate = function($linkdate)
         {
-            return substr($link, 0, 8);
+            return substr($linkdate, 0, 10);
         };
 
         $query = 'SELECT linkdate FROM datastore;';
@@ -1003,6 +1003,7 @@ class linkdb
         $stmt = NULL;
 
         sort($linkdays);
+        //debug($linkdays);
         return $linkdays;
     }
 }
@@ -1249,7 +1250,7 @@ function showDaily()
     $LINKSDB=new linkdb(isLoggedIn() || $GLOBALS['config']['OPEN_SHAARLI']);  // Read links from database (and filter private links if used it not logged in).
 
 
-    $day=Date('Ymd',strtotime('-1 day')); // Yesterday, in format YYYYMMDD.
+    $day=Date('Y-m-d',strtotime('-1 day')); // Yesterday, in format YYYY-MM-DD.
     if (isset($_GET['day'])) $day=$_GET['day'];
 
     $days = $LINKSDB->days();
@@ -1302,7 +1303,7 @@ function showDaily()
     $PAGE->assign('col1',$columns[0]);
     $PAGE->assign('col2',$columns[1]);
     $PAGE->assign('col3',$columns[2]);
-    $PAGE->assign('day',utf8_encode(strftime('%A %d, %B %Y',linkdate2timestamp($day.'_000000'))));
+    $PAGE->assign('day',utf8_encode(strftime('%A %d, %B %Y',linkdate2timestamp($day.' 00:00:00'))));
     $PAGE->assign('previousday',$previousday);
     $PAGE->assign('nextday',$nextday);
     $PAGE->renderPage('daily');
