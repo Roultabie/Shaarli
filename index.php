@@ -59,7 +59,7 @@ ini_set('memory_limit', '128M');  // Try to set max upload file size and read (M
 ini_set('post_max_size', '16M');
 ini_set('upload_max_filesize', '16M');
 checkphpversion();
-error_reporting(E_ALL^E_WARNING);  // See all error except warnings.
+//error_reporting(E_ALL^E_WARNING);  // See all error except warnings.
 //error_reporting(-1); // See all errors (for debugging only)
 
 include "inc/rain.tpl.class.php"; //include Rain TPL
@@ -625,6 +625,42 @@ function tokenOk($token)
     return false; // Wrong token, or already used.
 }
 
+class dbConnexion
+{
+    private static $instance;
+    private static $dbHost;
+    private static $dbName;
+    private static $dbUser;
+    private static $dbPass;
+
+    public static function getInstance(){
+        if(!isset(self::$instance)){
+            self::setDbInfos();
+            self::setInstance();
+        }
+        return self::$instance;
+    }
+
+    private static function setInstance()
+    {
+        try {
+            self::$instance = new PDO('mysql:host=' . self::$dbHost . ';dbname=' . self::$dbName, self::$dbUser, self::$dbPass);
+            self::$instance->query("SET NAMES 'utf8'");
+        } catch (Exception $e) {
+            print "Erreur !: " . $e->getMessage() . "<br/>";
+            die();
+            return false;
+        }
+    }
+    private static function setDbInfos()
+    {
+        self::$dbHost = $GLOBALS['dbHost'];
+        self::$dbName = $GLOBALS['dbName'];
+        self::$dbUser = $GLOBALS['dbUser'];
+        self::$dbPass = $GLOBALS['dbPass'];
+    }
+}
+
 // ------------------------------------------------------------------------------------------
 /* This class is in charge of building the final page.
    (This is basically a wrapper around RainTPL which pre-fills some fields.)
@@ -678,41 +714,6 @@ class pageBuilder
     }
 }
 
-class dbConnexion
-{
-    private static $instance;
-    private static $dbHost;
-    private static $dbName;
-    private static $dbUser;
-    private static $dbPass;
-
-    public static function getInstance(){
-        if(!isset(self::$instance)){
-            self::setDbInfos();
-            self::setInstance();
-        }
-        return self::$instance;
-    }
-
-    private static function setInstance()
-    {
-        try {
-            self::$instance = new PDO('mysql:host=' . self::$dbHost . ';dbname=' . self::$dbName, self::$dbUser, self::$dbPass);
-            self::$instance->query("SET NAMES 'utf8'");
-        } catch (Exception $e) {
-            print "Erreur !: " . $e->getMessage() . "<br/>";
-            die();
-        }
-    }
-
-    private static function setDbInfos()
-    {
-        self::$dbHost = $GLOBALS['config']['dbHost'];
-        self::$dbName = $GLOBALS['config']['dbName'];
-        self::$dbUser = $GLOBALS['config']['dbUser'];
-        self::$dbPass = $GLOBALS['config']['dbPass'];
-    }
-
 // ------------------------------------------------------------------------------------------
 /* Data storage for links.
    This object behaves like an associative array.
@@ -735,7 +736,13 @@ class dbConnexion
      - Iterator so that this object can be used in foreach() loops.
      - Countable interface so that we can do a count() on this object.
 */
-class linkdb implements Iterator, Countable, ArrayAccess
+function debug($data)
+{
+    echo '<pre>';
+    var_dump($data);
+    echo '</pre>';
+}
+class linkdb
 {
     private $links; // List of links (associative array. Key=linkdate (eg. "20110823_124546"), value= associative array (keys:title,description...)
     private $urls;  // List of all recorded URLs (key=url, value=linkdate) for fast reserve search (url-->linkdate)
@@ -748,8 +755,8 @@ class linkdb implements Iterator, Countable, ArrayAccess
     // Input : $isLoggedIn : is the used logged in ?
     {
         $this->loggedin = $isLoggedIn;
-        $this->checkdb(); // Make sure data file exists.
-        $this->readdb();  // Then read it.
+        //$this->nbLinks = $this->count();
+        //
     }
 
     // ---- Countable interface implementation
@@ -766,7 +773,7 @@ class linkdb implements Iterator, Countable, ArrayAccess
     // ---- Misc methods
     private function checkdb() // Check if db directory and file exists.
     {
-        if (!file_exists($GLOBALS['config']['DATASTORE'])) // Create a dummy database for example.
+        /*if (!file_exists($GLOBALS['config']['DATASTORE'])) // Create a dummy database for example.
         {
              $this->links = array();
              $link = array('title'=>'Shaarli - sebsauvage.net','url'=>'http://sebsauvage.net/wiki/doku.php?id=php:shaarli','description'=>'Welcome to Shaarli ! This is a bookmark. To edit or delete me, you must first login.','private'=>0,'linkdate'=>'20110914_190000','tags'=>'opensource software');
@@ -774,25 +781,48 @@ class linkdb implements Iterator, Countable, ArrayAccess
              $link = array('title'=>'My secret stuff... - Pastebin.com','url'=>'http://sebsauvage.net/paste/?8434b27936c09649#bR7XsXhoTiLcqCpQbmOpBi3rq2zzQUC5hBI7ZT1O3x8=','description'=>'SShhhh!!  I\'m a private link only YOU can see. You can delete me too.','private'=>1,'linkdate'=>'20110914_074522','tags'=>'secretstuff');
              $this->links[$link['linkdate']] = $link;
              file_put_contents($GLOBALS['config']['DATASTORE'], PHPPREFIX.base64_encode(gzdeflate(serialize($this->links))).PHPSUFFIX); // Write database to disk
-        }
+        }*/
+    }
+
+    private function returnLinksFirstDate($page = '')
+    {
+        $where = (!$this->loggedin) ? 'WHERE private != 0' : '';
+        $query = 'SELECT linkdate FROM datastore ' . $where .' ORDER BY linkdate DESC;';
+        $stmt  = dbConnexion::getInstance()->prepare($query);
+        $stmt->execute();
+        $nb    = $stmt->rowCount();
+        $nbPages       = ceil((int)$nb / (int)$_SESSION['LINKS_PER_PAGE']);
+        $this->nbPages = ($nbPages === 0) ? 1 : $nbPages;
+        $this->nbLinks = $nb;
+        $dates         = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        //$key           = $page - 1;
+        $page           = (empty($page)) ? 0 : $page;
+        $page           = ($page < 0) ? 0 : $page;
+        $page           = ($page > $this->nbLinks) ? $this->nbLinks : $page;
+        $key            = $page;
+        $this->page    = $key;
+        $stmt->closeCursor();
+        $stmt          = NULL;
+        //debug($dates);
+        return $dates[$key]['linkdate'];
     }
 
     // Read database from disk to memory
-    private function readdb()
+    public function returnLinks($page = '')
     {
-        $where = (!$this->loggedin) ? 'WHERE private != 0' : '';
+        $where    = (!$this->loggedin) ? 'private != 0 AND' : '';
+        $linkdate = $this->returnLinksFirstDate($page);
+        $limit    = $_SESSION['LINKS_PER_PAGE'];
 
-        // Read data
-        $query = 'SELECT id, title, url, description, private, linkdate, smallhash, tags, author FROM datastore' . $where . ';';
+        $query = "SELECT id, title, url, description, private, linkdate, smallhash, tags, author FROM datastore
+                 WHERE " . $where . " linkdate <= '" . $linkdate . "' ORDER BY linkdate DESC LIMIT " . $limit . ";";
         $stmt  = dbConnexion::getInstance()->prepare($query);
         $stmt->execute();
-        $this->links = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $links = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $stmt->closeCursor();
         $stmt = NULL;
 
-        // Keep the list of the mapping URLs-->linkdate up-to-date.
-        $this->urls=array();
-        foreach($this->links as $link) { $this->urls[$link['url']]=$link['linkdate']; }
+        return $links;
     }
 
     public function setLink($link)
@@ -803,12 +833,13 @@ class linkdb implements Iterator, Countable, ArrayAccess
                   title = VALUES(title), url = VALUES(url), description = VALUES(description),
                   private = VALUES(private), linkdate = VALUES(linkdate), smallhash = VALUES(smallhash),
                   tag = VALUES(tags), author = VALUES(author), Dummy = NOT dummy;";
+        $stmt  = dbConnexion::getInstance()->prepare($query);
         $stmt->bindValue(':title', $link['title'], PDO::PARAM_STR);
         $stmt->bindValue(':url', $link['url'], PDO::PARAM_STR);
         $stmt->bindValue(':description', $link['description'], PDO::PARAM_STR);
         $stmt->bindValue(':private', $link['private'], PDO::PARAM_INT);
         $stmt->bindValue(':linkdate', $link['linkdate'], PDO::PARAM_STR);
-        $stmt->bindValue(':smallhash', smallhash($link['linkdate']), PDO::PARAM_STR);
+        $stmt->bindValue(':smallhash', smallHash($link['linkdate']), PDO::PARAM_STR);
         $stmt->bindValue(':tags', $link['tags'], PDO::PARAM_STR);
         $stmt->bindValue(':author', $link['author'], PDO::PARAM_STR);
         $stmt->execute();
@@ -819,7 +850,7 @@ class linkdb implements Iterator, Countable, ArrayAccess
 
     public function delLink($link)
     {
-        $query = 'DELETE FROM datastore WHERE smallhash = :smallhash;'
+        $query = 'DELETE FROM datastore WHERE smallhash = :smallhash;';
         $stmt->bindValue(':smallhash', smallhash($link['linkdate']));
         $stmt->execute();
     }
@@ -920,7 +951,7 @@ class linkdb implements Iterator, Countable, ArrayAccess
             $elements = explode(' ', $string);
             $all      = array_merge((array)$all, (array)$elements);
             return $string;
-        }
+        };
 
         $query = 'SELECT tags FROM datastore;';
         $stmt  = dbConnexion::getInstance()->prepare($query);
@@ -942,7 +973,7 @@ class linkdb implements Iterator, Countable, ArrayAccess
         $returnDate = function($linkdate)
         {
             return substr($link, 0, 8);
-        }
+        };
 
         $query = 'SELECT linkdate FROM datastore;';
         $stmt  = dbConnexion::getInstance()->prepare($query);
@@ -1555,7 +1586,7 @@ function renderPage()
         $link = array('title'=>trim($_POST['lf_title']),'url'=>$url,'description'=>trim($_POST['lf_description']),'private'=>(isset($_POST['lf_private']) ? 1 : 0),
                       'linkdate'=>$linkdate,'tags'=>str_replace(',',' ',$tags));
         if ($link['title']=='') $link['title']=$link['url']; // If title is empty, use the URL as title.
-        $LINKSDB->setink($link);
+        $LINKSDB->setLink($link);
         pubsubhub();
 
         // If we are called from the bookmarklet, we must close the popup:
@@ -1868,7 +1899,8 @@ function buildLinkList($PAGE,$LINKSDB)
         $search_type='permalink';
     }
     else
-        $linksToDisplay = $LINKSDB;  // otherwise, display without filtering.
+        $linksToDisplay = $LINKSDB->returnLinks();  // otherwise, display without filtering.
+        //debug($linksToDisplay);
 
     // Option: Show only private links
     if (!empty($_SESSION['privateonly']))
@@ -1892,28 +1924,33 @@ function buildLinkList($PAGE,$LINKSDB)
     if (count($linksToDisplay)==1) $GLOBALS['pagetitle'] = $linksToDisplay[$keys[0]]['title'].' - '.$GLOBALS['title'];
 
     // Select articles according to paging.
-    $pagecount = ceil(count($keys)/$_SESSION['LINKS_PER_PAGE']);
-    $pagecount = ($pagecount==0 ? 1 : $pagecount);
-    $page=( empty($_GET['page']) ? 1 : intval($_GET['page']));
-    $page = ( $page<1 ? 1 : $page );
-    $page = ( $page>$pagecount ? $pagecount : $page );
-    $i = ($page-1)*$_SESSION['LINKS_PER_PAGE']; // Start index.
-    $end = $i+$_SESSION['LINKS_PER_PAGE'];
-    $linkDisp=array(); // Links to display
-    while ($i<$end && $i<count($keys))
-    {
-        $link = $linksToDisplay[$keys[$i]];
-        $link['description']=nl2br(keepMultipleSpaces(text2clickable(htmlspecialchars($link['description']))));
-        $title=$link['title'];
-        $classLi =  $i%2!=0 ? '' : 'publicLinkHightLight';
-        $link['class'] = ($link['private']==0 ? $classLi : 'private');
-        $link['localdate']=linkdate2locale($link['linkdate']);
-        $taglist = explode(' ',$link['tags']);
-        uasort($taglist, 'strcasecmp');
-        $link['taglist']=$taglist;
-        $linkDisp[$keys[$i]] = $link;
-        $i++;
-    }
+    /*$pagecount = ceil(count($LINKSDB->nbLinks) / $_SESSION['LINKS_PER_PAGE']);
+    $pagecount = ($pagecount == 0) ? 1 : $pagecount;
+    $page      = empty($_GET['page']) ? 1 : intval($_GET['page']);
+    $page      = ($page < 1) ? 1 : $page ;
+    $page      = ($page > $pagecount) ? $pagecount : $page;
+    $linkDisp  = $LINKSDB->readdb($page);*/
+    // $i = ($page-1)*$_SESSION['LINKS_PER_PAGE']; // Start index.
+    // $end = $i+$_SESSION['LINKS_PER_PAGE'];
+    // $linkDisp=array(); // Links to display
+    // while ($i<$end && $i<count($keys))
+    // {
+    //     $link = $linksToDisplay[$keys[$i]];
+    //     $link['description']=nl2br(keepMultipleSpaces(text2clickable(htmlspecialchars($link['description']))));
+    //     $title=$link['title'];
+    //     $classLi =  $i%2!=0 ? '' : 'publicLinkHightLight';
+    //     $link['class'] = ($link['private']==0 ? $classLi : 'private');
+    //     $link['localdate']=linkdate2locale($link['linkdate']);
+    //     $taglist = explode(' ',$link['tags']);
+    //     uasort($taglist, 'strcasecmp');
+    //     $link['taglist']=$taglist;
+    //     $linkDisp[$keys[$i]] = $link;
+    //     $i++;
+    // }
+    $linkDisp = $LINKSDB->returnLinks($_GET['page']);
+    $page     = $LINKSDB->page;
+    $nbPages  = $LINKSDB->nbPages;
+    $nbLinks  = $LINKSDB->nbLinks;
 
     // Compute paging navigation
     $searchterm= ( empty($_GET['searchterm']) ? '' : '&searchterm='.$_GET['searchterm'] );
@@ -1925,11 +1962,11 @@ function buildLinkList($PAGE,$LINKSDB)
     $token = ''; if (isLoggedIn()) $token=getToken();
 
     // Fill all template fields.
-    $PAGE->assign('linkcount',count($LINKSDB));
+    $PAGE->assign('linkcount',$nbLinks);
     $PAGE->assign('previous_page_url',$previous_page_url);
     $PAGE->assign('next_page_url',$next_page_url);
     $PAGE->assign('page_current',$page);
-    $PAGE->assign('page_max',$pagecount);
+    $PAGE->assign('page_max',$nbPages);
     $PAGE->assign('result_count',count($linksToDisplay));
     $PAGE->assign('search_type',$search_type);
     $PAGE->assign('search_crits',$search_crits);
@@ -2150,20 +2187,85 @@ function install()
 
 
     if (!empty($_POST['setlogin']) && !empty($_POST['setpassword']))
+    //if (true)
     {
-        $tz = 'UTC';
-        if (!empty($_POST['continent']) && !empty($_POST['city']))
-            if (isTZvalid($_POST['continent'],$_POST['city']))
-                $tz = $_POST['continent'].'/'.$_POST['city'];
-        $GLOBALS['timezone'] = $tz;
-        // Everything is ok, let's create config file.
-        $GLOBALS['login'] = $_POST['setlogin'];
-        $GLOBALS['salt'] = sha1(uniqid('',true).'_'.mt_rand()); // Salt renders rainbow-tables attacks useless.
-        $GLOBALS['hash'] = sha1($_POST['setpassword'].$GLOBALS['login'].$GLOBALS['salt']);
-        $GLOBALS['title'] = (empty($_POST['title']) ? 'Shared links on '.htmlspecialchars(indexUrl()) : $_POST['title'] );
-        writeConfig();
-        echo '<script language="JavaScript">alert("Shaarli is now configured. Please enter your login/password and start shaaring your links !");document.location=\'?do=login\';</script>';
-        exit;
+        $GLOBALS['dbHost'] = $_POST['sqlhost'];
+        $GLOBALS['dbName'] = $_POST['sqldatabase'];
+        $GLOBALS['dbTable'] = $_POST['sqltable'];
+        $GLOBALS['dbUser'] = $_POST['sqluser'];
+        $GLOBALS['dbPass'] = $_POST['sqlpassword'];
+        //print_r($GLOBALS['config']);
+        if ($stmt = dbConnexion::getInstance()) {
+            $query = "CREATE TABLE " . $GLOBALS['dbTable'] . "(
+                                   `id` int(11) not null auto_increment,
+                                   `title` varchar(255),
+                                   `url` varchar(255),
+                                   `description` text,
+                                   `private` tinyint(1),
+                                   `linkdate` datetime not null,
+                                   `smallhash` char(6) not null,
+                                   `tags` varchar(255),
+                                   `author` tinyint(4),
+                                    PRIMARY KEY (`linkdate`),
+                                    UNIQUE KEY (`id`),
+                                    KEY `linkdate` (`linkdate`)
+                                ) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;";
+            $stmt = dbConnexion::getInstance()->prepare($query);
+            $stmt->execute();
+            $errorCode = $stmt->errorCode();
+            $stmt->closeCursor();
+            $stmt = NULL;
+            $pass = array('00000', '42S01');
+            if (in_array($errorCode, $pass)) {
+                if ($errorCode === '00000') {
+                    $date1       = new DateTime('2011-10-07 09:00:00');
+                    $firstDate   = $date1->format('Y-m-d H:i:s');
+                    $firstHash   = smallHash($firstDate);
+                    $date2       = new DateTime('2011-10-07 23:32:00');
+                    $secondDate  = $date2->format('Y-m-d H:i:s');
+                    $secondHash  = smallHash($secondDate);
+                    $query       = "INSERT INTO `" . $GLOBALS['dbTable'] . "` (`title`, `url`, `decription`, `private`, `linkdate`, `smallhash`, `tags`, `author`) 
+                                    VALUES (:title1, :url1, :description1, :private1, :linkdate1, :smallhash1, :tags1, :author1),
+                                    (:title2, :url2, :description2, :private2, :linkdate2, :smallhash2, :tags2, :author2);";
+                    $stmt = dbConnexion::getInstance()->prepare($query);
+                    $stmt->bindValue(':title1', 'Shaarli - sebsauvage.net', PDO::PARAM_STR);
+                    $stmt->bindValue(':url1', 'http://sebsauvage.net/wiki/doku.php?id=php:shaarli', PDO::PARAM_STR);
+                    $stmt->bindValue(':description1', 'Welcome to Shaarli ! This is a bookmark. To edit or delete me, you must first login.', PDO::PARAM_STR);
+                    $stmt->bindValue(':private1', 0, PDO::PARAM_INT);
+                    $stmt->bindValue(':linkdate1', $firstDate, PDO::PARAM_STR);
+                    $stmt->bindValue(':smallhash1', $firstHash, PDO::PARAM_STR);
+                    $stmt->bindValue(':tags1', 'secretstuff', PDO::PARAM_STR);
+                    $stmt->bindValue(':author1', 0, PDO::PARAM_INT);
+                    $stmt->bindValue(':title2', 'My secret stuff... - Pastebin.com', PDO::PARAM_STR);
+                    $stmt->bindValue(':url2', 'http://sebsauvage.net/paste/?8434b27936c09649#bR7XsXhoTiLcqCpQbmOpBi3rq2zzQUC5hBI7ZT1O3x8=', PDO::PARAM_STR);
+                    $stmt->bindValue(':description2', 'SShhhh!!  I\'m a private link only YOU can see. You can delete me too.', PDO::PARAM_STR);
+                    $stmt->bindValue(':private2', 1, PDO::PARAM_INT);
+                    $stmt->bindValue(':linkdate2', $secondDate, PDO::PARAM_STR);
+                    $stmt->bindValue(':smallhash2', $secondHash, PDO::PARAM_STR);
+                    $stmt->bindValue(':tags2', 'secretstuff', PDO::PARAM_STR);
+                    $stmt->bindValue(':author2', 0, PDO::PARAM_INT);
+                    $stmt->execute();
+                    $stmt->closeCursor();
+                    $stmt = NULL;
+                }
+                $tz = 'UTC';
+                if (!empty($_POST['continent']) && !empty($_POST['city']))
+                    if (isTZvalid($_POST['continent'],$_POST['city']))
+                        $tz = $_POST['continent'].'/'.$_POST['city'];
+                $GLOBALS['timezone'] = $tz;
+                // Everything is ok, let's create config file.
+                $GLOBALS['login'] = $_POST['setlogin'];
+                $GLOBALS['salt'] = sha1(uniqid('',true).'_'.mt_rand()); // Salt renders rainbow-tables attacks useless.
+                $GLOBALS['hash'] = sha1($_POST['setpassword'].$GLOBALS['login'].$GLOBALS['salt']);
+                $GLOBALS['title'] = (empty($_POST['title']) ? 'Shared links on '.htmlspecialchars(indexUrl()) : $_POST['title'] );
+                writeConfig();
+                echo '<script language="JavaScript">alert("Shaarli is now configured. Please enter your login/password and start shaaring your links !");document.location=\'?do=login\';</script>';
+                exit;
+            }
+        }
+        else {
+            echo 'pas de connexion possible !';
+        }
     }
 
     // Display config form:
@@ -2322,6 +2424,11 @@ function writeConfig()
 {
     if (is_file($GLOBALS['config']['CONFIG_FILE']) && !isLoggedIn()) die('You are not authorized to alter config.'); // Only logged in user can alter config.
     $config='<?php $GLOBALS[\'login\']='.var_export($GLOBALS['login'],true).'; $GLOBALS[\'hash\']='.var_export($GLOBALS['hash'],true).'; $GLOBALS[\'salt\']='.var_export($GLOBALS['salt'],true).'; ';
+    $config .= '$GLOBALS[\'dbHost\']=' . var_export($GLOBALS['dbHost'],true) . ';';
+    $config .= '$GLOBALS[\'dbName\']=' . var_export($GLOBALS['dbName'],true) . ';';
+    $config .= '$GLOBALS[\'dbTable\']=' . var_export($GLOBALS['dbTable'],true) . ';';
+    $config .= '$GLOBALS[\'dbUser\']=' . var_export($GLOBALS['dbUser'],true) . ';';
+    $config .= '$GLOBALS[\'dbPass\']=' . var_export($GLOBALS['dbPass'],true) . ';';
     $config .='$GLOBALS[\'timezone\']='.var_export($GLOBALS['timezone'],true).'; date_default_timezone_set('.var_export($GLOBALS['timezone'],true).'); $GLOBALS[\'title\']='.var_export($GLOBALS['title'],true).';';
     $config .= '$GLOBALS[\'redirector\']='.var_export($GLOBALS['redirector'],true).'; ';
     $config .= '$GLOBALS[\'disablesessionprotection\']='.var_export($GLOBALS['disablesessionprotection'],true).'; ';
