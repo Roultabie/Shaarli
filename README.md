@@ -10,7 +10,7 @@ Features:
 
  * Minimalist design (simple is beautiful)
  * **FAST**
- * Dead-simple installation: Drop the files, open the page. No database required.
+ * Dead-simple installation: Drop the files, open the page (need mariaDB or mysql).
  * Easy to use: Single button in your browser to bookmark a page
  * Save url, title, description (unlimited size). Classify links with tags (with autocomplete)
  * Tag renaming, merging and deletion.
@@ -26,8 +26,7 @@ Features:
  * “Links of the day” Newspaper-like digest, browsable by day.
  * “Daily” RSS feed: Get each day a digest of all new links.
  * [PubSubHubbub](https://code.google.com/p/pubsubhubbub/) protocol support
- * Easy backup (Data stored in a single file)
- * Compact storage (1315 links stored in 150 kb)
+ * MariaDB storage
  * Mobile browsers support
  * Also works with javascript disabled
  * Can import/export Netscape bookmarks (for import/export from/to Firefox, Opera, Chrome, Delicious…)
