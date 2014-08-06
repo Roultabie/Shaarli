@@ -816,19 +816,25 @@ class linkdb
     }
 
     // Read database from disk to memory
-    public function returnLinks()
+    public function returnLinks($between = '')
     {
         $this->returnCurrentInfos();
-        $linkdate = $this->returnFirstLink();
-        $options = (!empty($this->where)) ? 'WHERE ' . $this->where . ' AND' : 'WHERE';
+        if (!is_array($between)) {
+            $linkdate = ' WHERE linkdate <= \'' .$this->returnFirstLink() . '\'';
+            $limit    = 'LIMIT ' . $_SESSION['LINKS_PER_PAGE'];
+        }
+        else {
+            $linkdate = 'WHERE linkdate BETWEEN \'' . $between[0] . '\' AND \'' . $between[1] . '\'';
+        }
+        $options = (!empty($this->where)) ? ' AND ' . $this->where : '';
         $query = "SELECT id, title, url, description, private, linkdate, smallhash, tags, author FROM datastore
-                 " . $options . " linkdate <= '" . $linkdate . "' ORDER BY linkdate DESC LIMIT " . $_SESSION['LINKS_PER_PAGE'] . ";";
+                 " . $linkdate . $options . " ORDER BY linkdate DESC " . $limit . ";";
         $stmt  = dbConnexion::getInstance()->prepare($query);
         $stmt->execute();
         $links = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $stmt->closeCursor();
         $stmt = NULL;
-
+        //debug($query);
         return $links;
     }
 
@@ -995,14 +1001,14 @@ class linkdb
             return substr($linkdate, 0, 10);
         };
 
-        $query = 'SELECT linkdate FROM datastore;';
+        $query = 'SELECT linkdate FROM datastore ORDER BY linkdate DESC;';
         $stmt  = dbConnexion::getInstance()->prepare($query);
         $stmt->execute();
         $linkdays = $stmt->fetchAll(PDO::FETCH_FUNC, $returnDate);
         $stmt->closeCursor();
         $stmt = NULL;
 
-        sort($linkdays);
+        //sort($linkdays);
         //debug($linkdays);
         return $linkdays;
     }
@@ -1181,24 +1187,14 @@ function showDailyRSS()
     // If cached was not found (or not usable), then read the database and build the response:
     $LINKSDB=new linkdb(isLoggedIn() || $GLOBALS['config']['OPEN_SHAARLI']);  // Read links from database (and filter private links if used it not logged in).
 
-    /* Some Shaarlies may have very few links, so we need to look
-       back in time (rsort()) until we have enough days ($nb_of_days).
-    */
-    $linkdates=array(); foreach($LINKSDB as $linkdate=>$value) { $linkdates[]=$linkdate; }
-    rsort($linkdates);
-    $nb_of_days=7; // We take 7 days.
-    $today=Date('Ymd');
-    $days=array();
-    foreach($linkdates as $linkdate)
-    {
-        $day=substr($linkdate,0,8); // Extract day (without time)
-        if (strcmp($day,$today)<0)
-        {
-            if (empty($days[$day])) $days[$day]=array();
-            $days[$day][]=$linkdate;
-        }
-        if (count($days)>$nb_of_days) break; // Have we collected enough days ?
-    }
+    $days     = $LINKSDB->days(); // We return days
+    $days     = array_unique($days); // Sanitize list
+    //debug($days);
+    // and return first and last days
+    $firstDay  = (count($days) < 6) ? end($days) : $days[6];
+    $lastDay  = $days[0];
+    
+    $links    = $LINKSDB->returnLinks(array($firstDay, $lastDay . ' 23:59:59')); // finaly return links from 7 days
 
     // Build the RSS feed.
     header('Content-Type: application/rss+xml; charset=utf-8');
@@ -1207,36 +1203,43 @@ function showDailyRSS()
     echo '<channel><title>Daily - '.htmlspecialchars($GLOBALS['title']).'</title><link>'.$pageaddr.'</link>';
     echo '<description>Daily shared links</description><language>en-en</language><copyright>'.$pageaddr.'</copyright>'."\n";
 
-    foreach($days as $day=>$linkdates) // For each day.
+    /*foreach($days as $day) // For each day.
     {
-        $daydate = utf8_encode(strftime('%A %d, %B %Y',linkdate2timestamp($day.'_000000'))); // Full text date
-        $rfc822date = linkdate2rfc822($day.'_000000');
-        $absurl=htmlspecialchars(indexUrl().'?do=daily&day='.$day);  // Absolute URL of the corresponding "Daily" page.
-        echo '<item><title>'.htmlspecialchars($GLOBALS['title'].' - '.$daydate).'</title><guid>'.$absurl.'</guid><link>'.$absurl.'</link>';
-        echo '<pubDate>'.htmlspecialchars($rfc822date)."</pubDate>";
+        
 
         // Build the HTML body of this RSS entry.
         $html='';
-        $href='';
-        $links=array();
+        $href='';*/
         // We pre-format some fields for proper output.
-        foreach($linkdates as $linkdate)
+        $l['lastitem'] = false;
+        $lastLinkKey   = count($links) - 1;
+        foreach($links as $l)
         {
-            $l = $LINKSDB[$linkdate];
+            $l['closedesc'] = false;
+            $l['closeitem'] = false;
+            $day = substr($l['linkdate'], 0, 10);
+            $l['globaltitle'] = false;
+            if ($day != $previousDay) {
+                $l['globaltitle'] = $GLOBALS['title'].' - ' . utf8_encode(strftime('%A %d, %B %Y',linkdate2timestamp($day.' 00:00:00'))); // Full text date
+                $l['globaldate']  = linkdate2rfc822($day.'_000000');
+                $l['absurl']      = htmlspecialchars(indexUrl().'?do=daily&day='.$day);  // Absolute URL of the corresponding "Daily" page.
+                $l['closedesc']   = (empty($previousDay)) ? false : true;
+                $l['closeitem']   = (empty($previousDay)) ? false : true;
+            }
             $l['formatedDescription']=nl2br(keepMultipleSpaces(text2clickable(htmlspecialchars($l['description']))));
             $l['thumbnail'] = thumbnail($l['url']);
             $l['localdate']=linkdate2locale($l['linkdate']);
             if (startsWith($l['url'],'?')) $l['url']=indexUrl().$l['url'];  // make permalink URL absolute
-            $links[$linkdate]=$l;
+            $formatedLinks[] = $l;
+            $previousDay     = $day;
         }
+        $formatedLinks[$lastLinkKey]['lastitem'] = true;
         // Then build the HTML for this day:
         $tpl = new RainTPL;
-        $tpl->assign('links',$links);
+        $tpl->assign('links',$formatedLinks);
         $html = $tpl->draw('dailyrss',$return_string=true);
-        echo "\n";
-        echo '<description><![CDATA['.$html.']]></description>'."\n</item>\n\n";
-
-    }
+    //}
+    echo $html;
     echo '</channel></rss><!-- Cached version of '.htmlspecialchars(pageUrl()).' -->';
 
     $cache->cache(ob_get_contents());

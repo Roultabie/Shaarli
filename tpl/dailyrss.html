@@ -1,8 +1,18 @@
 {loop="links"}
-	<h3><a href="{$value.url}">{$value.title|htmlspecialchars}</a></h3>
+{if="$value.globaltitle!=false"}
+    {if="$value.closedesc==true"}]]></description>{/if}
+    {if="$value.closeitem==true"}</item>{/if}
+    <item><title>{$value.globaltitle|htmlspecialchars}</title><guid>{$value.absurl}</guid><link>{$value.absurl}</link>
+    <pubDate>{$value.globaldate|htmlspecialchars}</pubDate>
+    <description><![CDATA[
+{/if}<h3><a href="{$value.url}">{$value.title|htmlspecialchars}</a></h3>
 	<small>{if="!$GLOBALS['config']['HIDE_TIMESTAMPS']"}{$value.localdate|htmlspecialchars} - {/if}{if="$value.tags"}{$value.tags|htmlspecialchars}{/if}<br>
 	{$value.url|htmlspecialchars}</small><br>
 	{if="$value.thumbnail"}{$value.thumbnail}{/if}<br>
 	{if="$value.description"}{$value.formatedDescription}{/if}
 	<br><br><hr>
+{if="$value.lastitem==true"}
+]]></description>
+    </item>
+{/if}
 {/loop}
