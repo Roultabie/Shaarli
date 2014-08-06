@@ -1257,6 +1257,7 @@ function showDaily()
     if (isset($_GET['day'])) $day=$_GET['day'];
 
     $days = $LINKSDB->days();
+    $days = array_reverse($days);
     $i = array_search($day,$days);
     if ($i==false) { $i=count($days)-1; $day=$days[$i]; }
     $previousday='';
