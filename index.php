@@ -816,15 +816,18 @@ class linkdb
     }
 
     // Read database from disk to memory
-    public function returnLinks($between = '')
+    public function returnLinks($more = '')
     {
         $this->returnCurrentInfos();
-        if (!is_array($between)) {
+        if (is_array($more)) {
+            $linkdate = 'WHERE linkdate BETWEEN \'' . $between[0] . '\' AND \'' . $between[1] . '\'';
+        }
+        elseif ($more === 'all') {
             $linkdate = ' WHERE linkdate <= \'' .$this->returnFirstLink() . '\'';
-            $limit    = 'LIMIT ' . $_SESSION['LINKS_PER_PAGE'];
         }
         else {
-            $linkdate = 'WHERE linkdate BETWEEN \'' . $between[0] . '\' AND \'' . $between[1] . '\'';
+            $linkdate = ' WHERE linkdate <= \'' .$this->returnFirstLink() . '\'';
+            $limit    = 'LIMIT ' . $_SESSION['LINKS_PER_PAGE'];
         }
         $options = (!empty($this->where)) ? ' AND ' . $this->where : '';
         $query = "SELECT id, title, url, description, private, linkdate, smallhash, tags, author FROM datastore
@@ -1198,7 +1201,7 @@ function showDailyRSS()
     $lastDay  = $days[0];
     
     $links    = $LINKSDB->returnLinks(array($firstDay, $lastDay . ' 23:59:59')); // finaly return links from 7 days
-
+    
     // Build the RSS feed.
     header('Content-Type: application/rss+xml; charset=utf-8');
     $pageaddr=htmlspecialchars(indexUrl());
@@ -1351,7 +1354,7 @@ function renderPage()
         $links=array();
         if (!empty($_GET['searchterm'])) $links = $LINKSDB->filterFulltext($_GET['searchterm']);
         elseif (!empty($_GET['searchtags']))   $links = $LINKSDB->filterTags(trim($_GET['searchtags']));
-        else $links = $LINKSDB;
+        else $links = $LINKSDB->returnLinks('all');
         $body='';
         $linksToDisplay=array();
 
