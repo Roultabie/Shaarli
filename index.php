@@ -867,10 +867,11 @@ class linkdb
         $stmt = NULL;
     }
 
-    public function delLink($link)
+    public function delLink($linkdate)
     {
-        $query = 'DELETE FROM datastore WHERE smallhash = :smallhash;';
-        $stmt->bindValue(':smallhash', smallhash($link['linkdate']));
+        $query = 'DELETE FROM datastore WHERE linkdate = :linkdate;';
+        $stmt  = dbConnexion::getInstance()->prepare($query);
+        $stmt->bindValue(':linkdate', $linkdate);
         $stmt->execute();
     }
 
