@@ -797,7 +797,7 @@ class linkdb
 
     public function setLink($link)
     {
-        $query = "INSERT INTO datastore (title, url, description, private, linkdate, smallhash, tags, author) 
+        $query = "INSERT INTO " . $GLOBALS['dbTable'] . " (title, url, description, private, linkdate, smallhash, tags, author) 
                   VALUES (:title, :url, :description, :private, :linkdate, :smallhash, :tags, :author)
                   ON DUPLICATE KEY 
                   UPDATE title = VALUES(title), url = VALUES(url), description = VALUES(description),
@@ -811,7 +811,7 @@ class linkdb
         $stmt->bindValue(':linkdate', $link['linkdate'], PDO::PARAM_STR);
         $stmt->bindValue(':smallhash', smallHash($link['linkdate']), PDO::PARAM_STR);
         $stmt->bindValue(':tags', $link['tags'], PDO::PARAM_STR);
-        $stmt->bindValue(':author', $link['author'], PDO::PARAM_STR);
+        $stmt->bindValue(':author', $link['author'], PDO::PARAM_INT);
         $stmt->execute();
         $stmt->closeCursor();
         $stmt = NULL;
