@@ -1971,10 +1971,11 @@ function buildLinkList($PAGE,$LINKSDB)
     $previous_page_url = ($nbPages > 1 && $page < $nbPages) ? '?page=' . ($page) . $searchterm . $searchtags : '';
     $next_page_url     = ($nbPages > 1 && $page > 1) ? '?page=' . ($page-2) . $searchterm . $searchtags : '';
 
-    // Creating taglist
+    // Creating taglist and formatting description
     $toTagList = function(&$link) 
     {
-        $link['taglist'] = explode(' ', $link['tags']);
+        $link['taglist']     = explode(' ', $link['tags']);
+        $link['description'] = nl2br(keepMultipleSpaces(text2clickable(htmlspecialchars($link['description']))));
     };
     array_walk($linkDisp, $toTagList);
 
