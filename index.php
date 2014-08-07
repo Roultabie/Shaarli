@@ -1973,7 +1973,8 @@ function buildLinkList($PAGE,$LINKSDB)
     $next_page_url     = ($nbPages > 1 && $page > 1) ? '?page=' . ($page-2) . $searchterm . $searchtags : '';
 
     // Creating taglist
-    $toTagList = function(&$link) {
+    $toTagList = function(&$link) 
+    {
         $link['taglist'] = explode(' ', $link['tags']);
     };
     array_walk($linkDisp, $toTagList);
