@@ -1255,16 +1255,16 @@ function showDaily()
 
     $day=Date('Y-m-d',strtotime('-1 day')); // Yesterday, in format YYYY-MM-DD.
     if (isset($_GET['day'])) $day=$_GET['day'];
-
     $days = $LINKSDB->days();
     $days = array_reverse($days);
-    $i = array_search($day,$days);
-    if ($i==false) { $i=count($days)-1; $day=$days[$i]; }
+    $days = array_values(array_unique($days));
+    $i    = array_search($day,$days);
+    if ($i===false) { $i=count($days)-1; $day=$days[$i]; }
     $previousday='';
     $nextday='';
     if ($i!==false)
     {
-        if ($i>1) $previousday=$days[$i-1];
+        if ($i>0) $previousday=$days[$i-1];
         if ($i<count($days)-1) $nextday=$days[$i+1];
     }
 
