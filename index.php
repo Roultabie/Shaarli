@@ -1958,7 +1958,14 @@ function buildLinkList($PAGE,$LINKSDB)
     $previous_page_url = ($nbPages > 1 && $page < $nbPages) ? '?page=' . ($page) . $searchterm . $searchtags : '';
     $next_page_url     = ($nbPages > 1 && $page > 1) ? '?page=' . ($page-2) . $searchterm . $searchtags : '';
 
+    // Creating taglist
+    $toTagList = function(&$link) {
+        $link['taglist'] = explode(' ', $link['tags']);
+    };
+    array_walk($linkDisp, $toTagList);
+    
     $token = ''; if (isLoggedIn()) $token=getToken();
+
 
     // Fill all template fields.
     $PAGE->assign('linkcount',$nbLinks);
