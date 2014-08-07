@@ -820,7 +820,7 @@ class linkdb
     {
         $this->returnCurrentInfos();
         if (is_array($more)) {
-            $linkdate = 'WHERE linkdate BETWEEN \'' . $between[0] . '\' AND \'' . $between[1] . '\'';
+            $linkdate = 'WHERE linkdate BETWEEN \'' . $more[0] . '\' AND \'' . $more[1] . '\'';
         }
         elseif ($more === 'all') {
             $linkdate = ' WHERE linkdate <= \'' .$this->returnFirstLink() . '\'';
@@ -1201,7 +1201,7 @@ function showDailyRSS()
     $lastDay  = $days[0];
     
     $links    = $LINKSDB->returnLinks(array($firstDay, $lastDay . ' 23:59:59')); // finaly return links from 7 days
-    
+
     // Build the RSS feed.
     header('Content-Type: application/rss+xml; charset=utf-8');
     $pageaddr=htmlspecialchars(indexUrl());
