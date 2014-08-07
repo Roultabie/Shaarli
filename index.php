@@ -1309,7 +1309,7 @@ function showDaily()
     }
     $PAGE = new pageBuilder;
     $PAGE->assign('linksToDisplay',$linksToDisplay);
-    $PAGE->assign('linkcount',count($LINKSDB));
+    $PAGE->assign('linkcount',$LINKSDB->nbLinks);
     $PAGE->assign('col1',$columns[0]);
     $PAGE->assign('col1',$columns[0]);
     $PAGE->assign('col2',$columns[1]);
@@ -1372,7 +1372,7 @@ function renderPage()
             }
         }
         $PAGE = new pageBuilder;
-        $PAGE->assign('linkcount',count($LINKSDB));
+        $PAGE->assign('linkcount',$LINKSDB->nbLinks);
         $PAGE->assign('linksToDisplay',$linksToDisplay);
         $PAGE->renderPage('picwall');
         exit;
@@ -1392,7 +1392,7 @@ function renderPage()
             $tagList[$key] = array('count'=>$value,'size'=>max(40*$value/$maxcount,8));
         }
         $PAGE = new pageBuilder;
-        $PAGE->assign('linkcount',count($LINKSDB));
+        $PAGE->assign('linkcount',$LINKSDB->nbLinks);
         $PAGE->assign('tags',$tagList);
         $PAGE->renderPage('tagcloud');
         exit;
@@ -1480,7 +1480,7 @@ function renderPage()
     if (isset($_SERVER["QUERY_STRING"]) && startswith($_SERVER["QUERY_STRING"],'do=tools'))
     {
         $PAGE = new pageBuilder;
-        $PAGE->assign('linkcount',count($LINKSDB));
+        $PAGE->assign('linkcount',$LINKSDB->nbLinks);
         $PAGE->assign('pageabsaddr',indexUrl());
         $PAGE->renderPage('tools');
         exit;
@@ -1507,7 +1507,7 @@ function renderPage()
         else // show the change password form.
         {
             $PAGE = new pageBuilder;
-            $PAGE->assign('linkcount',count($LINKSDB));
+            $PAGE->assign('linkcount',$LINKSDB->nbLinks);
             $PAGE->assign('token',getToken());
             $PAGE->renderPage('changepassword');
             exit;
@@ -1537,7 +1537,7 @@ function renderPage()
         else // Show the configuration form.
         {
             $PAGE = new pageBuilder;
-            $PAGE->assign('linkcount',count($LINKSDB));
+            $PAGE->assign('linkcount',$LINKSDB->nbLinks);
             $PAGE->assign('token',getToken());
             $PAGE->assign('title',htmlspecialchars( empty($GLOBALS['title']) ? '' : $GLOBALS['title'] , ENT_QUOTES));
             $PAGE->assign('redirector',htmlspecialchars( empty($GLOBALS['redirector']) ? '' : $GLOBALS['redirector'] , ENT_QUOTES));
@@ -1555,7 +1555,7 @@ function renderPage()
         if (empty($_POST['fromtag']))
         {
             $PAGE = new pageBuilder;
-            $PAGE->assign('linkcount',count($LINKSDB));
+            $PAGE->assign('linkcount',$LINKSDB->nbLinks);
             $PAGE->assign('token',getToken());
             $PAGE->renderPage('changetag');
             exit;
@@ -1599,7 +1599,7 @@ function renderPage()
     if (isset($_SERVER["QUERY_STRING"]) && startswith($_SERVER["QUERY_STRING"],'do=addlink'))
     {
         $PAGE = new pageBuilder;
-        $PAGE->assign('linkcount',count($LINKSDB));
+        $PAGE->assign('linkcount',$LINKSDB->nbLinks);
         $PAGE->renderPage('addlink');
         exit;
     }
@@ -1663,7 +1663,7 @@ function renderPage()
         $link = $LINKSDB->filterSmallHash($smallHash);  // Read database
         if (!$link) { header('Location: ?'); exit; } // Link not found in database.
         $PAGE = new pageBuilder;
-        $PAGE->assign('linkcount',count($LINKSDB));
+        $PAGE->assign('linkcount',$LINKSDB->nbLinks);
         $PAGE->assign('link',$link[0]);
         $PAGE->assign('link_is_new',false);
         $PAGE->assign('token',getToken()); // XSRF protection.
@@ -1727,7 +1727,7 @@ function renderPage()
         }
 
         $PAGE = new pageBuilder;
-        $PAGE->assign('linkcount',count($LINKSDB));
+        $PAGE->assign('linkcount',$LINKSDB->nbLinks);
         $PAGE->assign('link',$link);
         $PAGE->assign('link_is_new',$link_is_new);
         $PAGE->assign('token',getToken()); // XSRF protection.
@@ -1742,7 +1742,7 @@ function renderPage()
         if (empty($_GET['what']))
         {
             $PAGE = new pageBuilder;
-            $PAGE->assign('linkcount',count($LINKSDB));
+            $PAGE->assign('linkcount',$LINKSDB->nbLinks);
             $PAGE->renderPage('export');
             exit;
         }
@@ -1796,7 +1796,7 @@ HTML;
     if (isset($_SERVER["QUERY_STRING"]) && startswith($_SERVER["QUERY_STRING"],'do=import'))
     {
         $PAGE = new pageBuilder;
-        $PAGE->assign('linkcount',count($LINKSDB));
+        $PAGE->assign('linkcount',$LINKSDB->nbLinks);
         $PAGE->assign('token',getToken());
         $PAGE->assign('maxfilesize',getMaxFileSize());
         $PAGE->renderPage('import');
@@ -1805,7 +1805,7 @@ HTML;
 
     // -------- Otherwise, simply display search form and links:
     $PAGE = new pageBuilder;
-    $PAGE->assign('linkcount',count($LINKSDB));
+    $PAGE->assign('linkcount',$LINKSDB->nbLinks);
     buildLinkList($PAGE,$LINKSDB); // Compute list of links to display
     $PAGE->renderPage('linklist');
     exit;
