@@ -2218,19 +2218,17 @@ function install()
         //print_r($GLOBALS['config']);
         if ($stmt = dbConnexion::getInstance()) {
             $query = "CREATE TABLE " . $GLOBALS['dbTable'] . "(
-                                   `id` int(11) not null auto_increment,
+                                   `linkdate` datetime not null,
                                    `title` varchar(255),
                                    `url` varchar(255),
                                    `description` text,
                                    `private` tinyint(1),
-                                   `linkdate` datetime not null,
                                    `smallhash` char(6) not null,
                                    `tags` varchar(255),
                                    `author` tinyint(4),
                                     PRIMARY KEY (`linkdate`),
-                                    UNIQUE KEY (`id`),
                                     KEY `linkdate` (`linkdate`)
-                                ) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;";
+                                ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
             $stmt = dbConnexion::getInstance()->prepare($query);
             $stmt->execute();
             $errorCode = $stmt->errorCode();
