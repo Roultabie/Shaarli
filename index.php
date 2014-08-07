@@ -2184,7 +2184,6 @@ function install()
     // On free.fr host, make sure the /sessions directory exists, otherwise login will not work.
     if (endsWith($_SERVER['HTTP_HOST'],'.free.fr') && !is_dir($_SERVER['DOCUMENT_ROOT'].'/sessions')) mkdir($_SERVER['DOCUMENT_ROOT'].'/sessions',0705);
 
-
     // This part makes sure sessions works correctly.
     // (Because on some hosts, session.save_path may not be set correctly,
     // or we may not have write access to it.)
@@ -2207,14 +2206,13 @@ function install()
 
 
     if (!empty($_POST['setlogin']) && !empty($_POST['setpassword']))
-    //if (true)
     {
+        // Create database
         $GLOBALS['dbHost'] = $_POST['sqlhost'];
         $GLOBALS['dbName'] = $_POST['sqldatabase'];
         $GLOBALS['dbTable'] = $_POST['sqltable'];
         $GLOBALS['dbUser'] = $_POST['sqluser'];
         $GLOBALS['dbPass'] = $_POST['sqlpassword'];
-        //print_r($GLOBALS['config']);
         if ($stmt = dbConnexion::getInstance()) {
             $query = "CREATE TABLE " . $GLOBALS['dbTable'] . "(
                                    `linkdate` datetime not null,
@@ -2236,35 +2234,55 @@ function install()
             $pass = array('00000', '42S01');
             if (in_array($errorCode, $pass)) {
                 if ($errorCode === '00000') {
-                    $date1       = new DateTime('2011-10-07 09:00:00');
-                    $firstDate   = $date1->format('Y-m-d H:i:s');
-                    $firstHash   = smallHash($firstDate);
-                    $date2       = new DateTime('2011-10-07 23:32:00');
-                    $secondDate  = $date2->format('Y-m-d H:i:s');
-                    $secondHash  = smallHash($secondDate);
-                    $query       = "INSERT INTO `" . $GLOBALS['dbTable'] . "` (`title`, `url`, `description`, `private`, `linkdate`, `smallhash`, `tags`, `author`) 
-                                    VALUES (:title1, :url1, :description1, :private1, :linkdate1, :smallhash1, :tags1, :author1),
-                                    (:title2, :url2, :description2, :private2, :linkdate2, :smallhash2, :tags2, :author2);";
+                    $query = "INSERT INTO `" . $GLOBALS['dbTable'] . "` (`title`, `url`, `description`, `private`, `linkdate`, `smallhash`, `tags`, `author`) 
+                              VALUES (:title, :url, :description, :private, :linkdate, :smallhash, :tags, :author);";
                     $stmt = dbConnexion::getInstance()->prepare($query);
-                    $stmt->bindValue(':title1', 'Shaarli - sebsauvage.net', PDO::PARAM_STR);
-                    $stmt->bindValue(':url1', 'http://sebsauvage.net/wiki/doku.php?id=php:shaarli', PDO::PARAM_STR);
-                    $stmt->bindValue(':description1', 'Welcome to Shaarli ! This is a bookmark. To edit or delete me, you must first login.', PDO::PARAM_STR);
-                    $stmt->bindValue(':private1', 0, PDO::PARAM_INT);
-                    $stmt->bindValue(':linkdate1', $firstDate, PDO::PARAM_STR);
-                    $stmt->bindValue(':smallhash1', $firstHash, PDO::PARAM_STR);
-                    $stmt->bindValue(':tags1', 'secretstuff', PDO::PARAM_STR);
-                    $stmt->bindValue(':author1', 0, PDO::PARAM_INT);
-                    $stmt->bindValue(':title2', 'My secret stuff... - Pastebin.com', PDO::PARAM_STR);
-                    $stmt->bindValue(':url2', 'http://sebsauvage.net/paste/?8434b27936c09649#bR7XsXhoTiLcqCpQbmOpBi3rq2zzQUC5hBI7ZT1O3x8=', PDO::PARAM_STR);
-                    $stmt->bindValue(':description2', 'SShhhh!!  I\'m a private link only YOU can see. You can delete me too.', PDO::PARAM_STR);
-                    $stmt->bindValue(':private2', 1, PDO::PARAM_INT);
-                    $stmt->bindValue(':linkdate2', $secondDate, PDO::PARAM_STR);
-                    $stmt->bindValue(':smallhash2', $secondHash, PDO::PARAM_STR);
-                    $stmt->bindValue(':tags2', 'secretstuff', PDO::PARAM_STR);
-                    $stmt->bindValue(':author2', 0, PDO::PARAM_INT);
-                    $stmt->execute();
-                    $stmt->closeCursor();
-                    $stmt = NULL;
+                    if (file_exists($GLOBALS['config']['DATASTORE']) && isset($_POST['datastore'])) { // If datastore exists and user want import it
+                        $formatDate = function($linkdate)
+                        {
+                            $Y=$M=$D=$h=$m=$s=0;
+                            $r = sscanf($linkdate,'%4d%2d%2d_%2d%2d%2d',$Y,$M,$D,$h,$m,$s);
+                            return date('Y-m-d H:i:s', mktime($h,$m,$s,$M,$D,$Y));
+                        };
+                        $datas = file_get_contents($GLOBALS['config']['DATASTORE']);
+                        $datas = substr($datas,strlen(PHPPREFIX),-strlen(PHPSUFFIX));
+                        $datas = base64_decode($datas);
+                        $datas = gzinflate($datas);
+                        $datas = unserialize($datas);
+                    }
+                    else { // Or create example links
+                        $datas[0]['linkdate']    = '2011-10-07 09:00:00';
+                        $datas[0]['title']       = 'Shaarli - sebsauvage.net';
+                        $datas[0]['url']         = 'http://sebsauvage.net/wiki/doku.php?id=php:shaarli';
+                        $datas[0]['description'] = 'Welcome to Shaarli ! This is a bookmark. To edit or delete me, you must first login.';
+                        $datas[0]['private']     = 0;
+                        $datas[0]['smallHash']   = smallHash($datas[0]['linkdate']);
+                        $datas[0]['tags']        = 'free software';
+
+                        $datas[1]['linkdate']    = '2011-10-07 23:32:00';
+                        $datas[1]['title']       = 'My secret stuff... - Pastebin.com';
+                        $datas[1]['url']         = 'http://sebsauvage.net/paste/?8434b27936c09649#bR7XsXhoTiLcqCpQbmOpBi3rq2zzQUC5hBI7ZT1O3x8=';
+                        $datas[1]['description'] = 'SShhhh!!  I\'m a private link only YOU can see. You can delete me too.';
+                        $datas[1]['private']     = 1;
+                        $datas[1]['smallHash']   = smallHash($datas[1]['linkdate']);
+                        $datas[1]['tags']        = 'secretstuff';
+                    }
+                    if (is_array($datas)) {
+                        foreach ($datas as $key => $link) {
+                            $link['linkdate'] = (isset($_POST['datastore'])) ? $formatDate($link['linkdate']) : $link['linkdate'];
+                            $stmt->bindValue(':linkdate', $link['linkdate'], PDO::PARAM_STR);
+                            $stmt->bindValue(':title', $link['title'], PDO::PARAM_STR);
+                            $stmt->bindValue(':url', $link['url'], PDO::PARAM_STR);
+                            $stmt->bindValue(':description', $link['description'], PDO::PARAM_STR);
+                            $stmt->bindValue(':private', (int)$link['private'], PDO::PARAM_INT);
+                            $stmt->bindValue(':smallhash', smallHash($link['linkdate']), PDO::PARAM_STR);
+                            $stmt->bindValue(':tags', $link['tags'], PDO::PARAM_STR);
+                            $stmt->bindValue(':author', 0, PDO::PARAM_INT);
+                            $stmt->execute();
+                        }
+                        $stmt->closeCursor();
+                        $stmt = NULL;
+                    }
                 }
                 $tz = 'UTC';
                 if (!empty($_POST['continent']) && !empty($_POST['city']))
@@ -2273,8 +2291,8 @@ function install()
                 $GLOBALS['timezone'] = $tz;
                 // Everything is ok, let's create config file.
                 $GLOBALS['login'] = $_POST['setlogin'];
-                $GLOBALS['salt'] = sha1(uniqid('',true).'_'.mt_rand()); // Salt renders rainbow-tables attacks useless.
-                $GLOBALS['hash'] = sha1($_POST['setpassword'].$GLOBALS['login'].$GLOBALS['salt']);
+                $GLOBALS['salt']  = sha1(uniqid('',true).'_'.mt_rand()); // Salt renders rainbow-tables attacks useless.
+                $GLOBALS['hash']  = sha1($_POST['setpassword'].$GLOBALS['login'].$GLOBALS['salt']);
                 $GLOBALS['title'] = (empty($_POST['title']) ? 'Shared links on '.htmlspecialchars(indexUrl()) : $_POST['title'] );
                 writeConfig();
                 echo '<script language="JavaScript">alert("Shaarli is now configured. Please enter your login/password and start shaaring your links !");document.location=\'?do=login\';</script>';
