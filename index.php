@@ -782,17 +782,16 @@ class linkdb
             $limit    = 'LIMIT ' . $_SESSION['LINKS_PER_PAGE'];
         }
         $options = (!empty($this->where)) ? ' AND ' . $this->where : '';
-        $query = "SELECT title, url, description, private, linkdate, smallhash, tags, author 
+        $query   = "SELECT title, url, description, private, linkdate, smallhash, tags, author 
                   FROM " . $GLOBALS['dbTable'] . "
                   " . $linkdate . $options . " 
                   ORDER BY linkdate DESC 
                   " . $limit . ";";
-        $stmt  = dbConnexion::getInstance()->prepare($query);
+        $stmt    = dbConnexion::getInstance()->prepare($query);
         $stmt->execute();
         $links = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $stmt->closeCursor();
         $stmt = NULL;
-        //debug($query);
         return $links;
     }
 
@@ -859,18 +858,17 @@ class linkdb
         $this->returnCurrentInfos($options);
         $this->resultCount = $this->returnNb($options);
         $linkdate = $this->returnFirstLink();
-        $query = "SELECT title, url, description, private, linkdate, smallhash, tags, author 
-                  FROM " . $GLOBALS['dbTable'] . " 
-                  WHERE linkdate <= '" . $linkdate . "' AND (" . $options . ") 
-                  ORDER BY linkdate DESC 
-                  LIMIT " . $_SESSION['LINKS_PER_PAGE'] . ";";
-        $stmt  = dbConnexion::getInstance()->prepare($query);
+        $query    = "SELECT title, url, description, private, linkdate, smallhash, tags, author 
+                     FROM " . $GLOBALS['dbTable'] . " 
+                     WHERE linkdate <= '" . $linkdate . "' AND (" . $options . ") 
+                     ORDER BY linkdate DESC 
+                     LIMIT " . $_SESSION['LINKS_PER_PAGE'] . ";";
+        $stmt     = dbConnexion::getInstance()->prepare($query);
         $stmt->execute();
         $filtered = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $stmt->closeCursor();
         $stmt = NULL;
 
-        //krsort($filtered);
         return $filtered;
     }
 
@@ -889,12 +887,12 @@ class linkdb
         $this->returnCurrentInfos($options);
         $this->resultCount = $this->returnNb($options);
         $linkdate = $this->returnFirstLink();
-        $query = "SELECT title, url, description, private, linkdate, smallhash, tags, author 
-                  FROM " . $GLOBALS['dbTable'] . " 
-                  WHERE linkdate <= '" . $linkdate . "' AND (" . $options . ") 
-                  ORDER BY linkdate DESC 
-                  LIMIT " . $_SESSION['LINKS_PER_PAGE'] . ";";
-        $stmt  = dbConnexion::getInstance()->prepare($query);
+        $query    = "SELECT title, url, description, private, linkdate, smallhash, tags, author 
+                     FROM " . $GLOBALS['dbTable'] . " 
+                     WHERE linkdate <= '" . $linkdate . "' AND (" . $options . ") 
+                     ORDER BY linkdate DESC 
+                     LIMIT " . $_SESSION['LINKS_PER_PAGE'] . ";";
+        $stmt     = dbConnexion::getInstance()->prepare($query);
         $stmt->execute();
         $filtered = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $stmt->closeCursor();
@@ -916,8 +914,7 @@ class linkdb
         $filtered = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $stmt->closeCursor();
         $stmt = NULL;
-        //debug($query);
-        //debug($filtered);
+
         return $filtered;
     }
     // Filter by smallHash.
@@ -933,6 +930,7 @@ class linkdb
         $stmt->closeCursor();
         $stmt = NULL;
         $this->currentPage = $this->nbPages = 1;
+
         return $filtered;
     }
 
@@ -956,12 +954,13 @@ class linkdb
         $stmt->closeCursor();
         $stmt = NULL;
         // TODO: séparer les tags par des virgules à la création de ceux ci.
-        $all = implode(',', $filtered);
-        $all = str_replace(' ', ',', $all);
-        $all = explode(',', $all);
+        $all  = implode(',', $filtered);
+        $all  = str_replace(' ', ',', $all);
+        $all  = explode(',', $all);
         if (is_array($all)) {
             $tags = array_count_values($all);
         }
+
         return $tags;
     }
 
@@ -983,22 +982,21 @@ class linkdb
         $stmt->closeCursor();
         $stmt = NULL;
 
-        //sort($linkdays);
-        //debug($linkdays);
         return $linkdays;
     }
 
     private function returnNb($options = '')
     {
         $options = (!empty($options)) ? 'WHERE ' . $options : '';
-        $query = "SELECT COUNT(*) AS nb 
-                  FROM " . $GLOBALS['dbTable'] . " 
-                  " . $options .";";
-        $stmt = dbConnexion::getInstance()->prepare($query);
+        $query   = "SELECT COUNT(*) AS nb 
+                    FROM " . $GLOBALS['dbTable'] . " 
+                    " . $options .";";
+        $stmt    = dbConnexion::getInstance()->prepare($query);
         $stmt->execute();
         $result = $stmt->fetchAll(PDO::FETCH_OBJ);
         $stmt->closeCursor();
         $stmt = NULL;
+
         return $result[0]->nb;
     }
 
@@ -1016,17 +1014,18 @@ class linkdb
         $this->dates         = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $nbPages       = ceil((int)$nb / (int)$_SESSION['LINKS_PER_PAGE']);
         $this->nbPages = ($nbPages === 0) ? 1 : $nbPages;
-        $page           = (empty($page)) ? 0 : $page;
-        $page           = ($page < 0) ? 0 : $page;
-        $page           = ($page > $this->nbLinks) ? $this->nbLinks : $page;
+        $page          = (empty($page)) ? 0 : $page;
+        $page          = ($page < 0) ? 0 : $page;
+        $page          = ($page > $this->nbLinks) ? $this->nbLinks : $page;
         $this->currentPage    = $page + 1;
-        $key = ceil(($this->currentPage - 1) * $_SESSION['LINKS_PER_PAGE']);
+        $key             = ceil(($this->currentPage - 1) * $_SESSION['LINKS_PER_PAGE']);
         $this->firstLink = $this->dates[$key]['linkdate'];
     }
 
     private function returnFirstLink()
     {
         $key = ceil(($this->currentPage - 1) * $_SESSION['LINKS_PER_PAGE']);
+        
         return $this->dates[$key]['linkdate'];
     }
 
