@@ -1664,11 +1664,12 @@ function renderPage()
     // -------- User clicked the "EDIT" button on a link: Display link edit form.
     if (isset($_GET['edit_link']))
     {
-        $link = $LINKSDB[$_GET['edit_link']];  // Read database
+        $smallHash = smallHash($_GET['edit_link']);
+        $link = $LINKSDB->filterSmallHash($smallHash);  // Read database
         if (!$link) { header('Location: ?'); exit; } // Link not found in database.
         $PAGE = new pageBuilder;
         $PAGE->assign('linkcount',count($LINKSDB));
-        $PAGE->assign('link',$link);
+        $PAGE->assign('link',$link[0]);
         $PAGE->assign('link_is_new',false);
         $PAGE->assign('token',getToken()); // XSRF protection.
         $PAGE->assign('http_referer',(isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : ''));
