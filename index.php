@@ -798,7 +798,6 @@ class linkdb
         $links = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $stmt->closeCursor();
         $stmt = NULL;
-        debug($query);
         return $links;
     }
 
