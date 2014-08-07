@@ -985,7 +985,10 @@ class linkdb
         $filtered = $stmt->fetchAll(PDO::FETCH_FUNC, $tagsToArray);
         $stmt->closeCursor();
         $stmt = NULL;
-
+        // TODO: séparer les tags par des virgules à la création de ceux ci.
+        $all = implode(',', $filtered);
+        $all = str_replace(' ', ',', $all);
+        $all = explode(',', $all);
         if (is_array($all)) {
             $tags = array_count_values($all);
         }
