@@ -753,11 +753,11 @@ class linkdb
     private $position; // Position in the $this->keys array. (for the Iterator interface implementation.)
     private $loggedin; // Is the used logged in ? (used to filter private links)
     private $dates;
-    public $nbLinks;
-    public $nbPages;
-    public $currentPage;
     private $where;
-    public $resultCount;
+    public  $nbLinks;
+    public  $nbPages;
+    public  $currentPage;
+    public  $resultCount;
 
     // Constructor:
     function __construct($isLoggedIn)
@@ -765,59 +765,6 @@ class linkdb
     {
         $this->isLoggedIn($isLoggedIn);
         $this->nbLinks = $this->returnNb($this->where);
-        //$this->nbLinks = $this->count();
-        //
-    }
-
-    // ---- Countable interface implementation
-    public function returnNb($options = '')
-    {
-        $options = (!empty($options)) ? 'WHERE ' . $options : '';
-        $query = "SELECT COUNT(*) AS nb 
-                  FROM " . $GLOBALS['dbTable'] . " 
-                  " . $options .";";
-        $stmt = dbConnexion::getInstance()->prepare($query);
-        $stmt->execute();
-        $result = $stmt->fetchAll(PDO::FETCH_OBJ);
-        $stmt->closeCursor();
-        $stmt = NULL;
-        //$this->nbLinks = $result[0]->nb;
-        return $result[0]->nb;
-    }
-
-    // ---- Misc methods
-    private function returnCurrentInfos($options = '')
-    {
-        $page = $_GET['page'];
-        $options = (!empty($options)) ? 'WHERE ' . $options : '';
-        $query = "SELECT linkdate 
-                  FROM " . $GLOBALS['dbTable'] . " 
-                  " . $options . " 
-                  ORDER BY linkdate DESC;";
-        $stmt  = dbConnexion::getInstance()->prepare($query);
-        $stmt->execute();
-        $nb    = $stmt->rowCount();
-        $this->dates         = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $nbPages       = ceil((int)$nb / (int)$_SESSION['LINKS_PER_PAGE']);
-        $this->nbPages = ($nbPages === 0) ? 1 : $nbPages;
-        $page           = (empty($page)) ? 0 : $page;
-        $page           = ($page < 0) ? 0 : $page;
-        $page           = ($page > $this->nbLinks) ? $this->nbLinks : $page;
-        $this->currentPage    = $page + 1;
-        $key = ceil(($this->currentPage - 1) * $_SESSION['LINKS_PER_PAGE']);
-        $this->firstLink = $this->dates[$key]['linkdate'];
-    }
-
-    private function returnFirstLink()
-    {
-        $key = ceil(($this->currentPage - 1) * $_SESSION['LINKS_PER_PAGE']);
-        return $this->dates[$key]['linkdate'];
-    }
-
-    private function isLoggedIn($isLoggedIn)
-    {
-        $this->loggedin = $isLoggedIn;
-        $this->where    = (!$this->loggedin) ? 'private != 1' : '';
     }
 
     // Read database from disk to memory
@@ -1039,6 +986,54 @@ class linkdb
         //sort($linkdays);
         //debug($linkdays);
         return $linkdays;
+    }
+
+    private function returnNb($options = '')
+    {
+        $options = (!empty($options)) ? 'WHERE ' . $options : '';
+        $query = "SELECT COUNT(*) AS nb 
+                  FROM " . $GLOBALS['dbTable'] . " 
+                  " . $options .";";
+        $stmt = dbConnexion::getInstance()->prepare($query);
+        $stmt->execute();
+        $result = $stmt->fetchAll(PDO::FETCH_OBJ);
+        $stmt->closeCursor();
+        $stmt = NULL;
+        return $result[0]->nb;
+    }
+
+    private function returnCurrentInfos($options = '')
+    {
+        $page = $_GET['page'];
+        $options = (!empty($options)) ? 'WHERE ' . $options : '';
+        $query = "SELECT linkdate 
+                  FROM " . $GLOBALS['dbTable'] . " 
+                  " . $options . " 
+                  ORDER BY linkdate DESC;";
+        $stmt  = dbConnexion::getInstance()->prepare($query);
+        $stmt->execute();
+        $nb    = $stmt->rowCount();
+        $this->dates         = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $nbPages       = ceil((int)$nb / (int)$_SESSION['LINKS_PER_PAGE']);
+        $this->nbPages = ($nbPages === 0) ? 1 : $nbPages;
+        $page           = (empty($page)) ? 0 : $page;
+        $page           = ($page < 0) ? 0 : $page;
+        $page           = ($page > $this->nbLinks) ? $this->nbLinks : $page;
+        $this->currentPage    = $page + 1;
+        $key = ceil(($this->currentPage - 1) * $_SESSION['LINKS_PER_PAGE']);
+        $this->firstLink = $this->dates[$key]['linkdate'];
+    }
+
+    private function returnFirstLink()
+    {
+        $key = ceil(($this->currentPage - 1) * $_SESSION['LINKS_PER_PAGE']);
+        return $this->dates[$key]['linkdate'];
+    }
+
+    private function isLoggedIn($isLoggedIn)
+    {
+        $this->loggedin = $isLoggedIn;
+        $this->where    = (!$this->loggedin) ? 'private != 1' : '';
     }
 }
 
