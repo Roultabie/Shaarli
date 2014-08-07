@@ -960,7 +960,6 @@ class linkdb
         if (is_array($all)) {
             $tags = array_count_values($all);
         }
-
         return $tags;
     }
 
@@ -2430,7 +2429,9 @@ function processWS()
         {
             if (startsWith($key,$term,$case=true)) $suggested[$key]=0;
         }
-        echo json_encode(array_keys($suggested));
+        if (is_array($suggested)) {
+            echo json_encode(array_keys($suggested));
+        }
         exit;
     }
 }
