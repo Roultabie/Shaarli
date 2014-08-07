@@ -843,7 +843,6 @@ class linkdb
 
     public function setLink($link)
     {
-        debug($link);
         $query = "INSERT INTO datastore (title, url, description, private, linkdate, smallhash, tags, author) 
                   VALUES (:title, :url, :description, :private, :linkdate, :smallhash, :tags, :author)
                   ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id),
@@ -860,10 +859,7 @@ class linkdb
         $stmt->bindValue(':tags', $link['tags'], PDO::PARAM_STR);
         $stmt->bindValue(':author', $link['author'], PDO::PARAM_STR);
         $stmt->execute();
-        //$stmt->fetchAll(PDO::FETCH_ASSOC);
-        debug($stmt->errorInfo());
         $stmt->closeCursor();
-        debug($query);
         $stmt = NULL;
     }
 
@@ -1576,9 +1572,8 @@ function renderPage()
                 $tags = explode(' ',trim($value['tags']));
                 unset($tags[array_search($needle,$tags)]); // Remove tag.
                 $value['tags']=trim(implode(' ',$tags));
-                $LINKSDB[$key]=$value;
+                $LINKSDB->setLink($value);
             }
-            $LINKSDB->savedb(); // save to disk
             echo '<script language="JavaScript">alert("Tag was removed from '.count($linksToAlter).' links.");document.location=\'?\';</script>';
             exit;
         }
@@ -1593,9 +1588,8 @@ function renderPage()
                 $tags = explode(' ',trim($value['tags']));
                 $tags[array_search($needle,$tags)] = trim($_POST['totag']); // Remplace tags value.
                 $value['tags']=trim(implode(' ',$tags));
-                $LINKSDB[$key]=$value;
+                $LINKSDB->setLink($value);
             }
-            $LINKSDB->savedb(); // save to disk
             echo '<script language="JavaScript">alert("Tag was renamed in '.count($linksToAlter).' links.");document.location=\'?searchtags='.urlencode($_POST['totag']).'\';</script>';
             exit;
         }
