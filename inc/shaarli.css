@@ -89,7 +89,7 @@ h1 { font-size:20pt; font-weight:bold; font-style:italic; margin-bottom:20px; }
 }
 
 #pageheader #logo{
-background-image: url('../images/logo.png');
+background-image: url('../images/logo-light-blue.png');
 background-repeat: no-repeat;
 float:left;
 margin:0 10px 0 10px;
@@ -195,7 +195,7 @@ cursor:pointer;
 #pageheader a:hover { color:#FFFFC9; text-decoration:none;}
 #pageheader a:active { color:#bbb; text-decoration:none;}
 #searchcriteria { padding: 4px 0px 5px 5px; font-weight:bold;}
-.paging { padding:5px;background-color:#777; color:#ccc; text-align:center;  clear:both;}
+.paging { padding:5px; background-color:#587f96; color:#ccc; text-align:center;  clear:both;}
 .paging a:link { color:#ccc; text-decoration:none;}
 .paging a:visited { color:#ccc;  }
 .paging a:hover {  color:#FFFFC9;  }
@@ -312,7 +312,7 @@ text-shadow:2px 2px 1px #000000;
 .ui-autocomplete { background-color:#fff; padding-left:5px;}
 .ui-state-hover { background-color: #604dff; color:#fff; }
 
-#linklist li.publicLinkHightLight{
+#linklist li:nth-child(odd){
 	background: #ffffff;
 }
 
