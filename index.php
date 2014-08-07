@@ -745,6 +745,7 @@ function debug($data)
     var_dump($data);
     echo '</pre>';
 }
+
 class linkdb
 {
     private $links; // List of links (associative array. Key=linkdate (eg. "20110823_124546"), value= associative array (keys:title,description...)
@@ -1025,7 +1026,7 @@ class linkdb
     private function returnFirstLink()
     {
         $key = ceil(($this->currentPage - 1) * $_SESSION['LINKS_PER_PAGE']);
-        
+
         return $this->dates[$key]['linkdate'];
     }
 
@@ -1211,7 +1212,6 @@ function showDailyRSS()
 
     $days     = $LINKSDB->days(); // We return days
     $days     = array_unique($days); // Sanitize list
-    //debug($days);
     // and return first and last days
     $firstDay  = (count($days) < 6) ? end($days) : $days[6];
     $lastDay  = $days[0];
