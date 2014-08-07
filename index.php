@@ -773,7 +773,9 @@ class linkdb
     public function returnNb($options = '')
     {
         $options = (!empty($options)) ? 'WHERE ' . $options : '';
-        $query = 'SELECT COUNT(*) AS nb FROM datastore ' . $options .';';
+        $query = "SELECT COUNT(*) AS nb 
+                  FROM " . $GLOBALS['dbTable'] . " 
+                  " . $options .";";
         $stmt = dbConnexion::getInstance()->prepare($query);
         $stmt->execute();
         $result = $stmt->fetchAll(PDO::FETCH_OBJ);
@@ -788,7 +790,10 @@ class linkdb
     {
         $page = $_GET['page'];
         $options = (!empty($options)) ? 'WHERE ' . $options : '';
-        $query = 'SELECT linkdate FROM datastore ' . $options.' ORDER BY linkdate DESC;';
+        $query = "SELECT linkdate 
+                  FROM " . $GLOBALS['dbTable'] . " 
+                  " . $options . " 
+                  ORDER BY linkdate DESC;";
         $stmt  = dbConnexion::getInstance()->prepare($query);
         $stmt->execute();
         $nb    = $stmt->rowCount();
@@ -830,8 +835,11 @@ class linkdb
             $limit    = 'LIMIT ' . $_SESSION['LINKS_PER_PAGE'];
         }
         $options = (!empty($this->where)) ? ' AND ' . $this->where : '';
-        $query = "SELECT id, title, url, description, private, linkdate, smallhash, tags, author FROM datastore
-                 " . $linkdate . $options . " ORDER BY linkdate DESC " . $limit . ";";
+        $query = "SELECT title, url, description, private, linkdate, smallhash, tags, author 
+                  FROM " . $GLOBALS['dbTable'] . "
+                  " . $linkdate . $options . " 
+                  ORDER BY linkdate DESC 
+                  " . $limit . ";";
         $stmt  = dbConnexion::getInstance()->prepare($query);
         $stmt->execute();
         $links = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -845,8 +853,8 @@ class linkdb
     {
         $query = "INSERT INTO datastore (title, url, description, private, linkdate, smallhash, tags, author) 
                   VALUES (:title, :url, :description, :private, :linkdate, :smallhash, :tags, :author)
-                  ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id),
-                  title = VALUES(title), url = VALUES(url), description = VALUES(description),
+                  ON DUPLICATE KEY 
+                  UPDATE title = VALUES(title), url = VALUES(url), description = VALUES(description),
                   private = VALUES(private), linkdate = VALUES(linkdate), smallhash = VALUES(smallhash),
                   tags = VALUES(tags), author = VALUES(author);";
         $stmt  = dbConnexion::getInstance()->prepare($query);
@@ -865,7 +873,8 @@ class linkdb
 
     public function delLink($linkdate)
     {
-        $query = 'DELETE FROM datastore WHERE linkdate = :linkdate;';
+        $query = "DELETE FROM " . $GLOBALS['dbTable'] . " 
+                  WHERE linkdate = :linkdate;";
         $stmt  = dbConnexion::getInstance()->prepare($query);
         $stmt->bindValue(':linkdate', $linkdate);
         $stmt->execute();
@@ -874,7 +883,9 @@ class linkdb
     // Returns the link for a given URL (if it exists). false it does not exist.
     public function getLinkFromUrl($url)
     {
-        $query = 'SELECT url FROM datastore WHERE url = ' . $url . ';';
+        $query = "SELECT url 
+                  FROM " . $GLOBALS['dbTable'] . " 
+                  WHERE url = '" . $url . "';";
         $stmt  = dbConnexion::getInstance()->prepare($query);
         $stmt->execute();
         $filtered = $stmt->fetchAll(PDO::FETCH_COLUMN, 0);
@@ -902,8 +913,10 @@ class linkdb
         $this->resultCount = $this->returnNb($options);
         $linkdate = $this->returnFirstLink();
         $query = "SELECT title, url, description, private, linkdate, smallhash, tags, author 
-                  FROM datastore 
-                  WHERE linkdate <= '" . $linkdate . "' AND (" . $options . ") ORDER BY linkdate DESC LIMIT " . $_SESSION['LINKS_PER_PAGE'] . ";";
+                  FROM " . $GLOBALS['dbTable'] . " 
+                  WHERE linkdate <= '" . $linkdate . "' AND (" . $options . ") 
+                  ORDER BY linkdate DESC 
+                  LIMIT " . $_SESSION['LINKS_PER_PAGE'] . ";";
         $stmt  = dbConnexion::getInstance()->prepare($query);
         $stmt->execute();
         $filtered = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -930,8 +943,10 @@ class linkdb
         $this->resultCount = $this->returnNb($options);
         $linkdate = $this->returnFirstLink();
         $query = "SELECT title, url, description, private, linkdate, smallhash, tags, author 
-                  FROM datastore 
-                  WHERE linkdate <= '" . $linkdate . "' AND (" . $options . ") ORDER BY linkdate DESC LIMIT " . $_SESSION['LINKS_PER_PAGE'] . ";";
+                  FROM " . $GLOBALS['dbTable'] . " 
+                  WHERE linkdate <= '" . $linkdate . "' AND (" . $options . ") 
+                  ORDER BY linkdate DESC 
+                  LIMIT " . $_SESSION['LINKS_PER_PAGE'] . ";";
         $stmt  = dbConnexion::getInstance()->prepare($query);
         $stmt->execute();
         $filtered = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -946,7 +961,9 @@ class linkdb
     // eg. print_r($mydb->filterDay('20120125'));
     public function filterDay($day)
     {
-        $query = 'SELECT id, title, url, description, private, linkdate, smallhash, tags, author FROM datastore WHERE linkdate LIKE "' . $day . '%" ;';
+        $query = "SELECT title, url, description, private, linkdate, smallhash, tags, author 
+                  FROM " . $GLOBALS['dbTable'] . " 
+                  WHERE linkdate LIKE '" . $day . "%' ;";
         $stmt  = dbConnexion::getInstance()->prepare($query);
         $stmt->execute();
         $filtered = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -960,8 +977,9 @@ class linkdb
     // Only 1 article is returned.
     public function filterSmallHash($smallHash)
     {
-        $query = 'SELECT title, url, description, private, linkdate, smallhash, tags, author 
-                  FROM datastore WHERE smallhash = \'' . $smallHash . '\' LIMIT 1;';
+        $query = "SELECT title, url, description, private, linkdate, smallhash, tags, author 
+                  FROM " . $GLOBALS['dbTable'] . " 
+                  WHERE smallhash = '" . $smallHash . "' LIMIT 1;";
         $stmt  = dbConnexion::getInstance()->prepare($query);
         $stmt->execute();
         $filtered = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -983,7 +1001,8 @@ class linkdb
             return $string;
         };
 
-        $query = 'SELECT tags FROM datastore;';
+        $query = "SELECT tags 
+                  FROM " . $GLOBALS['dbTable'] . ";";
         $stmt  = dbConnexion::getInstance()->prepare($query);
         $stmt->execute();
         $filtered = $stmt->fetchAll(PDO::FETCH_FUNC, $tagsToArray);
@@ -1008,7 +1027,9 @@ class linkdb
             return substr($linkdate, 0, 10);
         };
 
-        $query = 'SELECT linkdate FROM datastore ORDER BY linkdate DESC;';
+        $query = "SELECT linkdate 
+                  FROM " . $GLOBALS['dbTable'] . " 
+                  ORDER BY linkdate DESC;";
         $stmt  = dbConnexion::getInstance()->prepare($query);
         $stmt->execute();
         $linkdays = $stmt->fetchAll(PDO::FETCH_FUNC, $returnDate);
@@ -1963,7 +1984,7 @@ function buildLinkList($PAGE,$LINKSDB)
         $link['taglist'] = explode(' ', $link['tags']);
     };
     array_walk($linkDisp, $toTagList);
-    
+
     $token = ''; if (isLoggedIn()) $token=getToken();
 
 
