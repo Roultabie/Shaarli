@@ -652,7 +652,6 @@ class dbConnexion
         } catch (Exception $e) {
             print "Erreur !: " . $e->getMessage() . "<br/>";
             die();
-            return false;
         }
     }
     private static function setDbInfos()
