@@ -781,7 +781,13 @@ class linkdb
             $linkdate = ' WHERE linkdate <= \'' .$this->returnFirstLink() . '\'';
             $limit    = 'LIMIT ' . $_SESSION['LINKS_PER_PAGE'];
         }
-        $options = (!empty($this->where)) ? ' AND ' . $this->where : '';
+        // Option: Show only private links
+        if (!empty($_SESSION['privateonly'])) {
+            $options = ' AND private = 1';
+        }
+        else {
+            $options = (!empty($this->where)) ? ' AND ' . $this->where : '';
+        }
         $query   = "SELECT title, url, description, private, linkdate, smallhash, tags, author 
                   FROM " . $GLOBALS['dbTable'] . "
                   " . $linkdate . $options . " 
@@ -792,6 +798,7 @@ class linkdb
         $links = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $stmt->closeCursor();
         $stmt = NULL;
+        debug($query);
         return $links;
     }
 
@@ -1944,16 +1951,6 @@ function buildLinkList($PAGE,$LINKSDB)
     }
     else {
         $linksToDisplay = $LINKSDB->returnLinks($_GET['page']);  // otherwise, display without filtering.
-    }
-    // Option: Show only private links
-    if (!empty($_SESSION['privateonly']))
-    {
-        $tmp = array();
-        foreach($linksToDisplay as $linkdate=>$link)
-        {
-            if ($link['private']!=0) $tmp[$linkdate]=$link;
-        }
-        $linksToDisplay=$tmp;
     }
 
     // If there is only a single link, we change on-the-fly the title of the page.
