@@ -963,13 +963,14 @@ class linkdb
     // Only 1 article is returned.
     public function filterSmallHash($smallHash)
     {
-        $query = 'SELECT title, url, description, private, linkdate, smallhash, tags, author FROM datastore WHERE smallhash = ' . $smallHash . ';';
+        $query = 'SELECT title, url, description, private, linkdate, smallhash, tags, author 
+                  FROM datastore WHERE smallhash = \'' . $smallHash . '\' LIMIT 1;';
         $stmt  = dbConnexion::getInstance()->prepare($query);
         $stmt->execute();
         $filtered = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $stmt->closeCursor();
         $stmt = NULL;
-
+        $this->currentPage = $this->nbPages = 1;
         return $filtered;
     }
 
