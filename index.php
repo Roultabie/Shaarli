@@ -843,12 +843,13 @@ class linkdb
 
     public function setLink($link)
     {
+        debug($link);
         $query = "INSERT INTO datastore (title, url, description, private, linkdate, smallhash, tags, author) 
                   VALUES (:title, :url, :description, :private, :linkdate, :smallhash, :tags, :author)
                   ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id),
                   title = VALUES(title), url = VALUES(url), description = VALUES(description),
                   private = VALUES(private), linkdate = VALUES(linkdate), smallhash = VALUES(smallhash),
-                  tag = VALUES(tags), author = VALUES(author), Dummy = NOT dummy;";
+                  tags = VALUES(tags), author = VALUES(author);";
         $stmt  = dbConnexion::getInstance()->prepare($query);
         $stmt->bindValue(':title', $link['title'], PDO::PARAM_STR);
         $stmt->bindValue(':url', $link['url'], PDO::PARAM_STR);
@@ -859,8 +860,10 @@ class linkdb
         $stmt->bindValue(':tags', $link['tags'], PDO::PARAM_STR);
         $stmt->bindValue(':author', $link['author'], PDO::PARAM_STR);
         $stmt->execute();
-        $this->links = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        //$stmt->fetchAll(PDO::FETCH_ASSOC);
+        debug($stmt->errorInfo());
         $stmt->closeCursor();
+        debug($query);
         $stmt = NULL;
     }
 
@@ -1687,7 +1690,7 @@ function renderPage()
         if (!$link)
         {
             $link_is_new = true;  // This is a new link
-            $linkdate = strval(date('Ymd_His'));
+            $linkdate = strval(date('Y-m-d H:i:s'));
             $title = (empty($_GET['title']) ? '' : $_GET['title'] ); // Get title if it was provided in URL (by the bookmarklet).
             $description = (empty($_GET['description']) ? '' : $_GET['description']); // Get description if it was provided in URL (by the bookmarklet). [Bronco added that]
             $tags = (empty($_GET['tags']) ? '' : $_GET['tags'] ); // Get tags if it was provided in URL
