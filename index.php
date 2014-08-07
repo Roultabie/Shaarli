@@ -764,7 +764,7 @@ class linkdb
     // Input : $isLoggedIn : is the used logged in ?
     {
         $this->isLoggedIn($isLoggedIn);
-        $this->nbLinks = $this->returnNb();
+        $this->nbLinks = $this->returnNb($this->where);
         //$this->nbLinks = $this->count();
         //
     }
