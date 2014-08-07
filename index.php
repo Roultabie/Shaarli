@@ -2217,7 +2217,7 @@ function install()
                     $date2       = new DateTime('2011-10-07 23:32:00');
                     $secondDate  = $date2->format('Y-m-d H:i:s');
                     $secondHash  = smallHash($secondDate);
-                    $query       = "INSERT INTO `" . $GLOBALS['dbTable'] . "` (`title`, `url`, `decription`, `private`, `linkdate`, `smallhash`, `tags`, `author`) 
+                    $query       = "INSERT INTO `" . $GLOBALS['dbTable'] . "` (`title`, `url`, `description`, `private`, `linkdate`, `smallhash`, `tags`, `author`) 
                                     VALUES (:title1, :url1, :description1, :private1, :linkdate1, :smallhash1, :tags1, :author1),
                                     (:title2, :url2, :description2, :private2, :linkdate2, :smallhash2, :tags2, :author2);";
                     $stmt = dbConnexion::getInstance()->prepare($query);
