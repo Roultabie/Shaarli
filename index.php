@@ -236,7 +236,8 @@ function nl2br_escaped($html)
 */
 function smallHash($text)
 {
-    $t = rtrim(base64_encode(hash('crc32',$text,true)),'=');
+    $t = str_replace(array('-', ' ', ':'), array('', '_', ''), $text);
+    $t = rtrim(base64_encode(hash('crc32',$t,true)),'=');
     return strtr($t, '+/', '-_');
 }
 
