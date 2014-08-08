@@ -1006,10 +1006,28 @@ class linkdb
         return $result[0]->nb;
     }
 
-    private function returnCurrentInfos($options = '')
+    private function returnCurrentInfos($opt = '')
     {
         $page = $_GET['page'];
-        $options = (!empty($options)) ? 'WHERE ' . $options : '';
+        if (!empty($_SESSION['privateonly'])) {
+            $last = 'private = 1';
+        }
+        elseif (strpos(str_replace(' ', '', $opt), 'private!=1') === false) {
+            $last = (!empty($this->where)) ? $this->where : '';
+        }
+        $first = (!empty($opt)) ? $opt : '';
+        if (!empty($first) && !empty($last)) {
+            $options = ' WHERE ' . $first . ' AND ' . $last;
+        }
+        elseif (!empty($first) && empty($last)) {
+            $options = ' WHERE ' . $first;   
+        }
+        elseif (empty($first) && !empty($last)) {
+            $options = ' WHERE ' . $last;
+        }
+        else {
+            $options = '';
+        }
         $query = "SELECT linkdate 
                   FROM " . $GLOBALS['dbTable'] . " 
                   " . $options . " 
