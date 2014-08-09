@@ -777,6 +777,10 @@ class linkdb
         elseif ($more === 'all') {
             $linkdate = ' WHERE linkdate <= \'' .$this->returnFirstLink() . '\'';
         }
+        elseif (is_int($more)) {
+            $linkdate = ' WHERE linkdate <= \'' .$this->returnFirstLink() . '\'';
+            $limit    = 'LIMIT ' . $more;
+        }
         else {
             $linkdate = ' WHERE linkdate <= \'' .$this->returnFirstLink() . '\'';
             $limit    = 'LIMIT ' . $_SESSION['LINKS_PER_PAGE'];
@@ -1045,7 +1049,7 @@ class linkdb
 // Ouput the last N links in RSS 2.0 format.
 function showRSS()
 {
-    header('Content-Type: application/rss+xml; charset=utf-8');
+    //header('Content-Type: application/rss+xml; charset=utf-8');
 
     // $usepermalink : If true, use permalink instead of final link.
     // User just has to add 'permalink' in URL parameters. eg. http://mysite.com/shaarli/?do=rss&permalinks
@@ -1061,14 +1065,15 @@ function showRSS()
 
     // Optionnaly filter the results:
     $linksToDisplay=array();
+    if (!empty($_GET['nb'])) {
+        $nblinksToDisplay = ($_GET['nb'] === 'all') ? $LINKSDB->nbLinks : (int)$_GET['nb'];
+    }
+    else {
+        $nblinksToDisplay = 50;
+    }
     if (!empty($_GET['searchterm'])) $linksToDisplay = $LINKSDB->filterFulltext($_GET['searchterm']);
     elseif (!empty($_GET['searchtags']))   $linksToDisplay = $LINKSDB->filterTags(trim($_GET['searchtags']));
-    else $linksToDisplay = $LINKSDB->returnLinks();
-    $nblinksToDisplay = 50;  // Number of links to display.
-    if (!empty($_GET['nb']))  // In URL, you can specificy the number of links. Example: nb=200 or nb=all for all links.
-    { 
-        $nblinksToDisplay = $_GET['nb']=='all' ? count($linksToDisplay) : max($_GET['nb']+0,1) ;
-    }
+    else $linksToDisplay = $LINKSDB->returnLinks($nblinksToDisplay);
 
     $pageaddr=htmlspecialchars(indexUrl());
     echo '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">';
@@ -1081,15 +1086,11 @@ function showRSS()
         echo '<link rel="self" href="'.htmlspecialchars($pageaddr).'?do=rss" xmlns="http://www.w3.org/2005/Atom" />';
         echo '<!-- End Of PubSubHubbub Discovery -->';
     }
-    $i=0;
-    $keys=array(); foreach($linksToDisplay as $key=>$value) { $keys[]=$key; }  // No, I can't use array_keys().
-    while ($i<$nblinksToDisplay && $i<count($keys))
-    {
-        $link = $linksToDisplay[$keys[$i]];
-        $guid = $pageaddr.'?'.smallHash($link['linkdate']);
+    foreach ($linksToDisplay as $link) {
+        $guid = $pageaddr.'?'. $link['smallhash'];
         $rfc822date = linkdate2rfc822($link['linkdate']);
         $absurl = htmlspecialchars($link['url']);
-        if (startsWith($absurl,'?')) $absurl=$pageaddr.$absurl;  // make permalink URL absolute
+        if (startsWith($absurl,'?')) $absurl = $pageaddr.$absurl;  // make permalink URL absolute
         if ($usepermalinks===true)
             echo '<item><title>'.htmlspecialchars($link['title']).'</title><guid isPermaLink="false">'.$guid.'</guid><link>'.$guid.'</link>';
         else
@@ -1106,7 +1107,6 @@ function showRSS()
         if ($usepermalinks===true) $descriptionlink = '(<a href="'.$absurl.'">Link</a>)';
         if (strlen($link['description'])>0) $descriptionlink = '<br>'.$descriptionlink;
         echo '<description><![CDATA['.nl2br(keepMultipleSpaces(text2clickable(htmlspecialchars($link['description'])))).$descriptionlink.']]></description>'."\n</item>\n";
-        $i++;
     }
     echo '</channel></rss><!-- Cached version of '.htmlspecialchars(pageUrl()).' -->';
 
@@ -2002,7 +2002,7 @@ function buildLinkList($PAGE,$LINKSDB)
 // Returns an associative array with thumbnail attributes (src,href,width,height,style,alt)
 // Some of them may be missing.
 // Return an empty array if no thumbnail available.
-function computeThumbnail($url,$href=false)
+function computeThumbnail($url,$href=false, $data ='')
 {
     if (!$GLOBALS['config']['ENABLE_THUMBNAILS']) return array();
     if ($href==false) $href=$url;
@@ -2010,64 +2010,72 @@ function computeThumbnail($url,$href=false)
     // For most hosts, the URL of the thumbnail can be easily deduced from the URL of the link.
     // (eg. http://www.youtube.com/watch?v=spVypYk4kto --->  http://img.youtube.com/vi/spVypYk4kto/default.jpg )
     //                                     ^^^^^^^^^^^                                 ^^^^^^^^^^^
-    $domain = parse_url($url,PHP_URL_HOST);
-    if ($domain=='youtube.com' || $domain=='www.youtube.com')
-    {
-        parse_str(parse_url($url,PHP_URL_QUERY), $params); // Extract video ID and get thumbnail
-        if (!empty($params['v'])) return array('src'=>'http://img.youtube.com/vi/'.$params['v'].'/default.jpg',
-                                               'href'=>$href,'width'=>'120','height'=>'90','alt'=>'YouTube thumbnail');
-    }
-    if ($domain=='youtu.be') // Youtube short links
-    {
-        $path = parse_url($url,PHP_URL_PATH);
-        return array('src'=>'http://img.youtube.com/vi'.$path.'/default.jpg',
-                     'href'=>$href,'width'=>'120','height'=>'90','alt'=>'YouTube thumbnail');
-    }
-    if ($domain=='pix.toile-libre.org') // pix.toile-libre.org image hosting
-    {
-        parse_str(parse_url($url,PHP_URL_QUERY), $params); // Extract image filename.
-        if (!empty($params) && !empty($params['img'])) return array('src'=>'http://pix.toile-libre.org/upload/thumb/'.urlencode($params['img']),
-                                                                    'href'=>$href,'style'=>'max-width:120px; max-height:150px','alt'=>'pix.toile-libre.org thumbnail');
-    }
-
-    if ($domain=='imgur.com')
-    {
-        $path = parse_url($url,PHP_URL_PATH);
-        if (startsWith($path,'/a/')) return array(); // Thumbnails for albums are not available.
-        if (startsWith($path,'/r/')) return array('src'=>'http://i.imgur.com/'.basename($path).'s.jpg',
-                                                  'href'=>$href,'width'=>'90','height'=>'90','alt'=>'imgur.com thumbnail');
-        if (startsWith($path,'/gallery/')) return array('src'=>'http://i.imgur.com'.substr($path,8).'s.jpg',
-                                                        'href'=>$href,'width'=>'90','height'=>'90','alt'=>'imgur.com thumbnail');
-
-        if (substr_count($path,'/')==1) return array('src'=>'http://i.imgur.com/'.substr($path,1).'s.jpg',
-                                                     'href'=>$href,'width'=>'90','height'=>'90','alt'=>'imgur.com thumbnail');
-    }
-    if ($domain=='i.imgur.com')
-    {
-        $pi = pathinfo(parse_url($url,PHP_URL_PATH));
-        if (!empty($pi['filename'])) return array('src'=>'http://i.imgur.com/'.$pi['filename'].'s.jpg',
-                                                  'href'=>$href,'width'=>'90','height'=>'90','alt'=>'imgur.com thumbnail');
-    }
-    if ($domain=='dailymotion.com' || $domain=='www.dailymotion.com')
-    {
-        if (strpos($url,'dailymotion.com/video/')!==false)
+    $domain     = parse_url($url,PHP_URL_HOST);
+    $domainList = array('youtube.com', 'www.youtube.com', 'youtu.be',
+                        'imgur.com', 'i.imgur.com',
+                        'dailymotion.com',
+                        'imageshack.us');
+    if (in_array($domain, $domainList)) {
+        if ($domain=='youtube.com' || $domain=='www.youtube.com')
         {
-            $thumburl=str_replace('dailymotion.com/video/','dailymotion.com/thumbnail/video/',$url);
-            return array('src'=>$thumburl,
-                         'href'=>$href,'width'=>'120','style'=>'height:auto;','alt'=>'DailyMotion thumbnail');
+            parse_str(parse_url($url,PHP_URL_QUERY), $params); // Extract video ID and get thumbnail
+            if (!empty($params['v'])) return array('src'=>'http://img.youtube.com/vi/'.$params['v'].'/default.jpg',
+                                                   'href'=>$href,'width'=>'120','height'=>'90','alt'=>'YouTube thumbnail');
+        }
+        if ($domain=='youtu.be') // Youtube short links
+        {
+            $path = parse_url($url,PHP_URL_PATH);
+            return array('src'=>'http://img.youtube.com/vi'.$path.'/default.jpg',
+                         'href'=>$href,'width'=>'120','height'=>'90','alt'=>'YouTube thumbnail');
+        }
+        if ($domain=='pix.toile-libre.org') // pix.toile-libre.org image hosting
+        {
+            parse_str(parse_url($url,PHP_URL_QUERY), $params); // Extract image filename.
+            if (!empty($params) && !empty($params['img'])) return array('src'=>'http://pix.toile-libre.org/upload/thumb/'.urlencode($params['img']),
+                                                                        'href'=>$href,'style'=>'max-width:120px; max-height:150px','alt'=>'pix.toile-libre.org thumbnail');
+        }
+
+        if ($domain=='imgur.com')
+        {
+            $path = parse_url($url,PHP_URL_PATH);
+            if (startsWith($path,'/a/')) return array(); // Thumbnails for albums are not available.
+            if (startsWith($path,'/r/')) return array('src'=>'http://i.imgur.com/'.basename($path).'s.jpg',
+                                                      'href'=>$href,'width'=>'90','height'=>'90','alt'=>'imgur.com thumbnail');
+            if (startsWith($path,'/gallery/')) return array('src'=>'http://i.imgur.com'.substr($path,8).'s.jpg',
+                                                            'href'=>$href,'width'=>'90','height'=>'90','alt'=>'imgur.com thumbnail');
+
+            if (substr_count($path,'/')==1) return array('src'=>'http://i.imgur.com/'.substr($path,1).'s.jpg',
+                                                         'href'=>$href,'width'=>'90','height'=>'90','alt'=>'imgur.com thumbnail');
+        }
+        if ($domain=='i.imgur.com')
+        {
+            $pi = pathinfo(parse_url($url,PHP_URL_PATH));
+            if (!empty($pi['filename'])) return array('src'=>'http://i.imgur.com/'.$pi['filename'].'s.jpg',
+                                                      'href'=>$href,'width'=>'90','height'=>'90','alt'=>'imgur.com thumbnail');
+        }
+        if ($domain=='dailymotion.com' || $domain=='www.dailymotion.com')
+        {
+            if (strpos($url,'dailymotion.com/video/')!==false)
+            {
+                $thumburl=str_replace('dailymotion.com/video/','dailymotion.com/thumbnail/video/',$url);
+                return array('src'=>$thumburl,
+                             'href'=>$href,'width'=>'120','style'=>'height:auto;','alt'=>'DailyMotion thumbnail');
+            }
+        }
+        if (endsWith($domain,'.imageshack.us'))
+        {
+            $ext=strtolower(pathinfo($url,PATHINFO_EXTENSION));
+            if ($ext=='jpg' || $ext=='jpeg' || $ext=='png' || $ext=='gif')
+            {
+                $thumburl = substr($url,0,strlen($url)-strlen($ext)).'th.'.$ext;
+                return array('src'=>$thumburl,
+                             'href'=>$href,'width'=>'120','style'=>'height:auto;','alt'=>'imageshack.us thumbnail');
+            }
         }
     }
-    if (endsWith($domain,'.imageshack.us'))
-    {
-        $ext=strtolower(pathinfo($url,PATHINFO_EXTENSION));
-        if ($ext=='jpg' || $ext=='jpeg' || $ext=='png' || $ext=='gif')
-        {
-            $thumburl = substr($url,0,strlen($url)-strlen($ext)).'th.'.$ext;
-            return array('src'=>$thumburl,
-                         'href'=>$href,'width'=>'120','style'=>'height:auto;','alt'=>'imageshack.us thumbnail');
-        }
-    }
+    else {
 
+    }
     // Some other hosts are SLOW AS HELL and usually require an extra HTTP request to get the thumbnail URL.
     // So we deport the thumbnail generation in order not to slow down page generation
     // (and we also cache the thumbnail)
