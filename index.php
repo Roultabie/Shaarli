@@ -1049,7 +1049,7 @@ class linkdb
 // Ouput the last N links in RSS 2.0 format.
 function showRSS()
 {
-    //header('Content-Type: application/rss+xml; charset=utf-8');
+    header('Content-Type: application/rss+xml; charset=utf-8');
 
     // $usepermalink : If true, use permalink instead of final link.
     // User just has to add 'permalink' in URL parameters. eg. http://mysite.com/shaarli/?do=rss&permalinks
