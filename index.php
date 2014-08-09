@@ -1136,28 +1136,26 @@ function showATOM()
 
     // Optionnaly filter the results:
     $linksToDisplay=array();
+    if (!empty($_GET['nb'])) {
+        $nblinksToDisplay = ($_GET['nb'] === 'all') ? $LINKSDB->nbLinks : (int)$_GET['nb'];
+    }
+    else {
+        $nblinksToDisplay = 50;
+    }
+    $linksToDisplay=array();
     if (!empty($_GET['searchterm'])) $linksToDisplay = $LINKSDB->filterFulltext($_GET['searchterm']);
     elseif (!empty($_GET['searchtags']))   $linksToDisplay = $LINKSDB->filterTags(trim($_GET['searchtags']));
-    else $linksToDisplay = $LINKSDB->returnLinks();
-    $nblinksToDisplay = 50;  // Number of links to display.
-    if (!empty($_GET['nb']))  // In URL, you can specificy the number of links. Example: nb=200 or nb=all for all links.
-    { 
-        $nblinksToDisplay = $_GET['nb']=='all' ? count($linksToDisplay) : max($_GET['nb']+0,1) ;
-    }
+    else $linksToDisplay = $LINKSDB->returnLinks($nblinksToDisplay);
 
     $pageaddr=htmlspecialchars(indexUrl());
     $latestDate = '';
     $entries='';
-    $i=0;
-    $keys=array(); foreach($linksToDisplay as $key=>$value) { $keys[]=$key; }  // No, I can't use array_keys().
-    while ($i<$nblinksToDisplay && $i<count($keys))
-    {
-        $link = $linksToDisplay[$keys[$i]];
+    foreach ($linksToDisplay as $link) {
         $guid = $pageaddr.'?'.smallHash($link['linkdate']);
         $iso8601date = linkdate2iso8601($link['linkdate']);
         $latestDate = max($latestDate,$iso8601date);
         $absurl = htmlspecialchars($link['url']);
-        if (startsWith($absurl,'?')) $absurl=$pageaddr.$absurl;  // make permalink URL absolute
+        if (startsWith($absurl,'?')) $absurl = $pageaddr . $absurl;  // make permalink URL absolute
         $entries.='<entry><title>'.htmlspecialchars($link['title']).'</title>';
         if ($usepermalinks===true)
             $entries.='<link href="'.$guid.'" /><id>'.$guid.'</id>';
@@ -1174,11 +1172,12 @@ function showATOM()
         $entries.='<content type="html">'.htmlspecialchars(nl2br(keepMultipleSpaces(text2clickable(htmlspecialchars($link['description']))))).$descriptionlink."</content>\n";
         if ($link['tags']!='') // Adding tags to each ATOM entry (as mentioned in ATOM specification)
         {
-            foreach(explode(' ',$link['tags']) as $tag)
-                { $entries.='<category scheme="'.htmlspecialchars($pageaddr,ENT_QUOTES).'" term="'.htmlspecialchars($tag,ENT_QUOTES).'" />'."\n"; }
+            $tags = explode(' ',$link['tags']);
+            foreach($tags as $tag) {
+                $entries.='<category scheme="'.htmlspecialchars($pageaddr,ENT_QUOTES).'" term="'.htmlspecialchars($tag,ENT_QUOTES).'" />'."\n";
+            }
         }
         $entries.="</entry>\n";
-        $i++;
     }
     $feed='<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom">';
     $feed.='<title>'.htmlspecialchars($GLOBALS['title']).'</title>';
