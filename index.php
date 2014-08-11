@@ -1147,7 +1147,7 @@ function showRSS()
     }
     echo '</channel></rss><!-- Cached version of '.htmlspecialchars(pageUrl()).' -->';
 
-    $cache->cache(ob_get_contents());
+    #$cache->cache(ob_get_contents());
     ob_end_flush();
     exit;
 }
