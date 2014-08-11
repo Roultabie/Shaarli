@@ -1773,7 +1773,6 @@ function renderPage()
 
                         // Extract meta properties
                         $properties = extractMetaProperties($data);
-                        debug($properties);
                         if (is_array($properties)) {
                             if (is_array($properties['images'])) {
                                 // Image
