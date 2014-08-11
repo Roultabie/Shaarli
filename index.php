@@ -593,7 +593,8 @@ function getHTTP($url,$timeout=30)
     }
     catch (Exception $e)  // getHTTP *can* fail silentely (we don't care if the title cannot be fetched)
     {
-        return array($e->getMessage(),'','');
+        exit;
+        //return array($e->getMessage(),'','');
     }
 }
 
@@ -608,7 +609,7 @@ function html_extract_title($html)
 function extractMetaProperties($html)
 {
     // extract like : <meta property="og:image:type" content="image/png" />
-    $pattern = '|<meta property=([\'"]?)og:(?<properties>[^"\']*)\1\s+content=\1(?<content>[^"\']*)\1\s*/*>|';
+    $pattern = '@<meta property|name=([\'"]?)[\w]{0,2}(?<properties>[^"\']*)\1\s+content=\1(?<content>[^"\']*)\1[\s/]*>@';
     preg_match_all($pattern, $html, $matches);
     foreach ($matches['properties'] as $key => $value) {
         if ($value === 'image') {
@@ -1769,9 +1770,18 @@ function renderPage()
 							$html_charset = (!empty($enc[1])) ? strtolower($enc[1]) : 'utf-8';
  						}
  						else { $html_charset = 'utf-8'; }
- 
+
+                        // Extract meta properties
+                        $properties = extractMetaProperties($data);
+                        debug($properties);
+                        if (is_array($properties)) {
+                            if (is_array($properties['images'])) {
+                                // Image
+                                $image = $properties['images'][0];
+                            }
+                        }
  						// Extract title
- 						$title = html_extract_title($data);
+ 						$title = (!empty($properties['title'])) ? $properties['title'] : html_extract_title($data);
 
  						if (!empty($title))
  						{
@@ -1779,13 +1789,6 @@ function renderPage()
  							$title = ($html_charset == 'iso-8859-1') ? utf8_encode($title) : $title;
  						}
 
-                        // Extract meta properties
-                        $properties = extractMetaProperties($data);
-                        if (is_array($properties)) {
-                            if (is_array($properties['images'])) {
-                                $image = $properties['images'][0];
-                            }
-                        }
  					}
             }
             //debug($data);
