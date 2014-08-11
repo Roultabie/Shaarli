@@ -604,6 +604,23 @@ function html_extract_title($html)
   return preg_match('!<title>(.*?)</title>!is', $html, $matches) ? trim(str_replace("\n",' ', $matches[1])) : '' ;
 }
 
+// Extract Meta properties if exists
+function extractMetaProperties($html)
+{
+    // extract like : <meta property="og:image:type" content="image/png" />
+    $pattern = '|<meta property=([\'"]?)og:(?<properties>[^"\']*)\1\s+content=\1(?<content>[^"\']*)\1\s*/*>|';
+    preg_match_all($pattern, $html, $matches);
+    foreach ($matches['properties'] as $key => $value) {
+        if ($value === 'image') {
+            $properties['images'][] = $matches['content'][$key];
+        }
+        else {
+            $properties[$value] = $matches['content'][$key];
+        }
+    }
+    return $properties;
+}
+
 // ------------------------------------------------------------------------------------------
 // Token management for XSRF protection
 // Token should be used in any form which acts on data (create,update,delete,import...).
@@ -793,7 +810,7 @@ class linkdb
         else {
             $options = (!empty($this->where)) ? ' AND ' . $this->where : '';
         }
-        $query   = "SELECT title, url, description, private, linkdate, smallhash, tags, author 
+        $query   = "SELECT title, url, description, private, linkdate, smallhash, tags, image, author 
                   FROM " . $GLOBALS['dbTable'] . "
                   " . $linkdate . $options . " 
                   ORDER BY linkdate DESC 
@@ -808,12 +825,12 @@ class linkdb
 
     public function setLink($link)
     {
-        $query = "INSERT INTO " . $GLOBALS['dbTable'] . " (title, url, description, private, linkdate, smallhash, tags, author) 
-                  VALUES (:title, :url, :description, :private, :linkdate, :smallhash, :tags, :author)
+        $query = "INSERT INTO " . $GLOBALS['dbTable'] . " (title, url, description, private, linkdate, smallhash, tags, image, author) 
+                  VALUES (:title, :url, :description, :private, :linkdate, :smallhash, :tags, :image, :author)
                   ON DUPLICATE KEY 
                   UPDATE title = VALUES(title), url = VALUES(url), description = VALUES(description),
                   private = VALUES(private), linkdate = VALUES(linkdate), smallhash = VALUES(smallhash),
-                  tags = VALUES(tags), author = VALUES(author);";
+                  tags = VALUES(tags), image = VALUES(image), author = VALUES(author);";
         $stmt  = dbConnexion::getInstance()->prepare($query);
         $stmt->bindValue(':title', $link['title'], PDO::PARAM_STR);
         $stmt->bindValue(':url', $link['url'], PDO::PARAM_STR);
@@ -822,6 +839,7 @@ class linkdb
         $stmt->bindValue(':linkdate', $link['linkdate'], PDO::PARAM_STR);
         $stmt->bindValue(':smallhash', smallHash($link['linkdate']), PDO::PARAM_STR);
         $stmt->bindValue(':tags', $link['tags'], PDO::PARAM_STR);
+        $stmt->bindValue(':image', $link['image'], PDO::PARAM_STR);
         $stmt->bindValue(':author', $link['author'], PDO::PARAM_INT);
         $stmt->execute();
         $stmt->closeCursor();
@@ -869,7 +887,7 @@ class linkdb
         $this->returnCurrentInfos($options);
         $this->resultCount = $this->returnNb($options);
         $linkdate = $this->returnFirstLink();
-        $query    = "SELECT title, url, description, private, linkdate, smallhash, tags, author 
+        $query    = "SELECT title, url, description, private, linkdate, smallhash, tags, image, author 
                      FROM " . $GLOBALS['dbTable'] . " 
                      WHERE linkdate <= '" . $linkdate . "' AND (" . $options . ") 
                      ORDER BY linkdate DESC 
@@ -898,7 +916,7 @@ class linkdb
         $this->returnCurrentInfos($options);
         $this->resultCount = $this->returnNb($options);
         $linkdate = $this->returnFirstLink();
-        $query    = "SELECT title, url, description, private, linkdate, smallhash, tags, author 
+        $query    = "SELECT title, url, description, private, linkdate, smallhash, tags, image, author 
                      FROM " . $GLOBALS['dbTable'] . " 
                      WHERE linkdate <= '" . $linkdate . "' AND (" . $options . ") 
                      ORDER BY linkdate DESC 
@@ -917,7 +935,7 @@ class linkdb
     // eg. print_r($mydb->filterDay('20120125'));
     public function filterDay($day)
     {
-        $query = "SELECT title, url, description, private, linkdate, smallhash, tags, author 
+        $query = "SELECT title, url, description, private, linkdate, smallhash, tags, image, author 
                   FROM " . $GLOBALS['dbTable'] . " 
                   WHERE linkdate LIKE '" . $day . "%' ;";
         $stmt  = dbConnexion::getInstance()->prepare($query);
@@ -932,7 +950,7 @@ class linkdb
     // Only 1 article is returned.
     public function filterSmallHash($smallHash)
     {
-        $query = "SELECT title, url, description, private, linkdate, smallhash, tags, author 
+        $query = "SELECT title, url, description, private, linkdate, smallhash, tags, image, author 
                   FROM " . $GLOBALS['dbTable'] . " 
                   WHERE smallhash = '" . $smallHash . "' LIMIT 1;";
         $stmt  = dbConnexion::getInstance()->prepare($query);
@@ -1317,10 +1335,11 @@ function showDaily()
     foreach($linksToDisplay as $key=>$link)
     {
         $taglist = explode(' ',$link['tags']);
+        $toThumb = (!empty($link['image'])) ? $link['image'] : $link['url'];
         uasort($taglist, 'strcasecmp');
         $linksToDisplay[$key]['taglist']=$taglist;
         $linksToDisplay[$key]['formatedDescription']=nl2br(keepMultipleSpaces(text2clickable(htmlspecialchars($link['description']))));
-        $linksToDisplay[$key]['thumbnail'] = thumbnail($link['url']);
+        $linksToDisplay[$key]['thumbnail'] = thumbnail($toThumb);
     }
 
     /* We need to spread the articles on 3 columns.
@@ -1400,7 +1419,8 @@ function renderPage()
         foreach($links as $link)
         {
             $permalink='?'.htmlspecialchars(smallhash($link['linkdate']),ENT_QUOTES);
-            $thumb=lazyThumbnail($link['url'],$permalink);
+            $toThumb  = (!empty($link['image'])) ? $link['image'] : $link['url'];
+            $thumb=lazyThumbnail($toThumb,$permalink);
             if ($thumb!='') // Only output links which have a thumbnail.
             {
                 $link['thumbnail']=$thumb; // Thumbnail HTML code.
@@ -1651,7 +1671,7 @@ function renderPage()
         if (!startsWith($url,'http:') && !startsWith($url,'https:') && !startsWith($url,'ftp:') && !startsWith($url,'magnet:') && !startsWith($url,'?'))
             $url = 'http://'.$url;
         $link = array('title'=>trim($_POST['lf_title']),'url'=>$url,'description'=>trim($_POST['lf_description']),'private'=>(isset($_POST['lf_private']) ? 1 : 0),
-                      'linkdate'=>$linkdate,'tags'=>str_replace(',',' ',$tags));
+                      'linkdate'=>$linkdate,'tags'=>str_replace(',',' ',$tags), 'image'=>$_POST['lf_image']);
         if ($link['title']=='') $link['title']=$link['url']; // If title is empty, use the URL as title.
         $LINKSDB->setLink($link);
         pubsubhub();
@@ -1752,15 +1772,25 @@ function renderPage()
  
  						// Extract title
  						$title = html_extract_title($data);
+
  						if (!empty($title))
  						{
  							// Re-encode title in utf-8 if necessary.
  							$title = ($html_charset == 'iso-8859-1') ? utf8_encode($title) : $title;
  						}
+
+                        // Extract meta properties
+                        $properties = extractMetaProperties($data);
+                        if (is_array($properties)) {
+                            if (is_array($properties['images'])) {
+                                $image = $properties['images'][0];
+                            }
+                        }
  					}
             }
+            //debug($data);
             if ($url=='') $url='?'.smallHash($linkdate); // In case of empty URL, this is just a text (with a link that point to itself)
-            $link = array('linkdate'=>$linkdate,'title'=>$title,'url'=>$url,'description'=>$description,'tags'=>$tags,'private'=>$private);
+            $link = array('linkdate'=>$linkdate,'image'=>$image,'title'=>$title,'url'=>$url,'description'=>$description,'tags'=>$tags,'private'=>$private);
         }
 
         $PAGE = new pageBuilder;
@@ -1990,11 +2020,11 @@ function buildLinkList($PAGE,$LINKSDB)
     {
         $link['taglist']     = explode(' ', $link['tags']);
         $link['description'] = nl2br(keepMultipleSpaces(text2clickable(htmlspecialchars($link['description']))));
+        $link['thumbnail']   = (!empty($link['image'])) ? $link['image'] : $link['url'];
     };
     array_walk($linkDisp, $toTagList);
 
     $token = ''; if (isLoggedIn()) $token=getToken();
-
 
     // Fill all template fields.
     $PAGE->assign('linkcount',$nbLinks);
@@ -2020,7 +2050,7 @@ function buildLinkList($PAGE,$LINKSDB)
 // Returns an associative array with thumbnail attributes (src,href,width,height,style,alt)
 // Some of them may be missing.
 // Return an empty array if no thumbnail available.
-function computeThumbnail($url,$href=false, $data ='')
+function computeThumbnail($url,$href=false)
 {
     if (!$GLOBALS['config']['ENABLE_THUMBNAILS']) return array();
     if ($href==false) $href=$url;
@@ -2028,72 +2058,64 @@ function computeThumbnail($url,$href=false, $data ='')
     // For most hosts, the URL of the thumbnail can be easily deduced from the URL of the link.
     // (eg. http://www.youtube.com/watch?v=spVypYk4kto --->  http://img.youtube.com/vi/spVypYk4kto/default.jpg )
     //                                     ^^^^^^^^^^^                                 ^^^^^^^^^^^
-    $domain     = parse_url($url,PHP_URL_HOST);
-    $domainList = array('youtube.com', 'www.youtube.com', 'youtu.be',
-                        'imgur.com', 'i.imgur.com',
-                        'dailymotion.com',
-                        'imageshack.us');
-    if (in_array($domain, $domainList)) {
-        if ($domain=='youtube.com' || $domain=='www.youtube.com')
-        {
-            parse_str(parse_url($url,PHP_URL_QUERY), $params); // Extract video ID and get thumbnail
-            if (!empty($params['v'])) return array('src'=>'http://img.youtube.com/vi/'.$params['v'].'/default.jpg',
-                                                   'href'=>$href,'width'=>'120','height'=>'90','alt'=>'YouTube thumbnail');
-        }
-        if ($domain=='youtu.be') // Youtube short links
-        {
-            $path = parse_url($url,PHP_URL_PATH);
-            return array('src'=>'http://img.youtube.com/vi'.$path.'/default.jpg',
-                         'href'=>$href,'width'=>'120','height'=>'90','alt'=>'YouTube thumbnail');
-        }
-        if ($domain=='pix.toile-libre.org') // pix.toile-libre.org image hosting
-        {
-            parse_str(parse_url($url,PHP_URL_QUERY), $params); // Extract image filename.
-            if (!empty($params) && !empty($params['img'])) return array('src'=>'http://pix.toile-libre.org/upload/thumb/'.urlencode($params['img']),
-                                                                        'href'=>$href,'style'=>'max-width:120px; max-height:150px','alt'=>'pix.toile-libre.org thumbnail');
-        }
+    $domain = parse_url($url,PHP_URL_HOST);
+    if ($domain=='youtube.com' || $domain=='www.youtube.com')
+    {
+        parse_str(parse_url($url,PHP_URL_QUERY), $params); // Extract video ID and get thumbnail
+        if (!empty($params['v'])) return array('src'=>'http://img.youtube.com/vi/'.$params['v'].'/default.jpg',
+                                               'href'=>$href,'width'=>'120','height'=>'90','alt'=>'YouTube thumbnail');
+    }
+    if ($domain=='youtu.be') // Youtube short links
+    {
+        $path = parse_url($url,PHP_URL_PATH);
+        return array('src'=>'http://img.youtube.com/vi'.$path.'/default.jpg',
+                     'href'=>$href,'width'=>'120','height'=>'90','alt'=>'YouTube thumbnail');
+    }
+    if ($domain=='pix.toile-libre.org') // pix.toile-libre.org image hosting
+    {
+        parse_str(parse_url($url,PHP_URL_QUERY), $params); // Extract image filename.
+        if (!empty($params) && !empty($params['img'])) return array('src'=>'http://pix.toile-libre.org/upload/thumb/'.urlencode($params['img']),
+                                                                    'href'=>$href,'style'=>'max-width:120px; max-height:150px','alt'=>'pix.toile-libre.org thumbnail');
+    }
 
-        if ($domain=='imgur.com')
-        {
-            $path = parse_url($url,PHP_URL_PATH);
-            if (startsWith($path,'/a/')) return array(); // Thumbnails for albums are not available.
-            if (startsWith($path,'/r/')) return array('src'=>'http://i.imgur.com/'.basename($path).'s.jpg',
-                                                      'href'=>$href,'width'=>'90','height'=>'90','alt'=>'imgur.com thumbnail');
-            if (startsWith($path,'/gallery/')) return array('src'=>'http://i.imgur.com'.substr($path,8).'s.jpg',
-                                                            'href'=>$href,'width'=>'90','height'=>'90','alt'=>'imgur.com thumbnail');
+    if ($domain=='imgur.com')
+    {
+        $path = parse_url($url,PHP_URL_PATH);
+        if (startsWith($path,'/a/')) return array(); // Thumbnails for albums are not available.
+        if (startsWith($path,'/r/')) return array('src'=>'http://i.imgur.com/'.basename($path).'s.jpg',
+                                                  'href'=>$href,'width'=>'90','height'=>'90','alt'=>'imgur.com thumbnail');
+        if (startsWith($path,'/gallery/')) return array('src'=>'http://i.imgur.com'.substr($path,8).'s.jpg',
+                                                        'href'=>$href,'width'=>'90','height'=>'90','alt'=>'imgur.com thumbnail');
 
-            if (substr_count($path,'/')==1) return array('src'=>'http://i.imgur.com/'.substr($path,1).'s.jpg',
-                                                         'href'=>$href,'width'=>'90','height'=>'90','alt'=>'imgur.com thumbnail');
-        }
-        if ($domain=='i.imgur.com')
+        if (substr_count($path,'/')==1) return array('src'=>'http://i.imgur.com/'.substr($path,1).'s.jpg',
+                                                     'href'=>$href,'width'=>'90','height'=>'90','alt'=>'imgur.com thumbnail');
+    }
+    if ($domain=='i.imgur.com')
+    {
+        $pi = pathinfo(parse_url($url,PHP_URL_PATH));
+        if (!empty($pi['filename'])) return array('src'=>'http://i.imgur.com/'.$pi['filename'].'s.jpg',
+                                                  'href'=>$href,'width'=>'90','height'=>'90','alt'=>'imgur.com thumbnail');
+    }
+    if ($domain=='dailymotion.com' || $domain=='www.dailymotion.com')
+    {
+        if (strpos($url,'dailymotion.com/video/')!==false)
         {
-            $pi = pathinfo(parse_url($url,PHP_URL_PATH));
-            if (!empty($pi['filename'])) return array('src'=>'http://i.imgur.com/'.$pi['filename'].'s.jpg',
-                                                      'href'=>$href,'width'=>'90','height'=>'90','alt'=>'imgur.com thumbnail');
-        }
-        if ($domain=='dailymotion.com' || $domain=='www.dailymotion.com')
-        {
-            if (strpos($url,'dailymotion.com/video/')!==false)
-            {
-                $thumburl=str_replace('dailymotion.com/video/','dailymotion.com/thumbnail/video/',$url);
-                return array('src'=>$thumburl,
-                             'href'=>$href,'width'=>'120','style'=>'height:auto;','alt'=>'DailyMotion thumbnail');
-            }
-        }
-        if (endsWith($domain,'.imageshack.us'))
-        {
-            $ext=strtolower(pathinfo($url,PATHINFO_EXTENSION));
-            if ($ext=='jpg' || $ext=='jpeg' || $ext=='png' || $ext=='gif')
-            {
-                $thumburl = substr($url,0,strlen($url)-strlen($ext)).'th.'.$ext;
-                return array('src'=>$thumburl,
-                             'href'=>$href,'width'=>'120','style'=>'height:auto;','alt'=>'imageshack.us thumbnail');
-            }
+            $thumburl=str_replace('dailymotion.com/video/','dailymotion.com/thumbnail/video/',$url);
+            return array('src'=>$thumburl,
+                         'href'=>$href,'width'=>'120','style'=>'height:auto;','alt'=>'DailyMotion thumbnail');
         }
     }
-    else {
-
+    if (endsWith($domain,'.imageshack.us'))
+    {
+        $ext=strtolower(pathinfo($url,PATHINFO_EXTENSION));
+        if ($ext=='jpg' || $ext=='jpeg' || $ext=='png' || $ext=='gif')
+        {
+            $thumburl = substr($url,0,strlen($url)-strlen($ext)).'th.'.$ext;
+            return array('src'=>$thumburl,
+                         'href'=>$href,'width'=>'120','style'=>'height:auto;','alt'=>'imageshack.us thumbnail');
+        }
     }
+
     // Some other hosts are SLOW AS HELL and usually require an extra HTTP request to get the thumbnail URL.
     // So we deport the thumbnail generation in order not to slow down page generation
     // (and we also cache the thumbnail)
@@ -2129,6 +2151,7 @@ function computeThumbnail($url,$href=false, $data ='')
     // For all other, we try to make a thumbnail of links ending with .jpg/jpeg/png/gif
     // Technically speaking, we should download ALL links and check their Content-Type to see if they are images.
     // But using the extension will do.
+    // NextInpact ne met pas d'extension à ses images meta. À voir pour une autre méthode de détection
     $ext=strtolower(pathinfo($url,PATHINFO_EXTENSION));
     if ($ext=='jpg' || $ext=='jpeg' || $ext=='png' || $ext=='gif')
     {
@@ -2245,6 +2268,7 @@ function install()
                                    `private` tinyint(1),
                                    `smallhash` char(6) not null,
                                    `tags` varchar(255),
+                                   `image` varchar(255),
                                    `author` tinyint(4),
                                     PRIMARY KEY (`linkdate`),
                                     KEY `linkdate` (`linkdate`)
