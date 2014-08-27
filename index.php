@@ -608,12 +608,13 @@ function html_extract_title($html)
 // Extract Meta properties if exists
 function extractMetaProperties($html)
 {
+    $multi = array('image', 'tag');
     // extract like : <meta property="og:image:type" content="image/png" />
-    $pattern = '@<meta property|name=([\'"]?)[\w]{0,2}(?<properties>[^"\']*)\1\s+content=\1(?<content>[^"\']*)\1[\s/]*>@';
+    $pattern = '@<meta property=([\'"]?)[\w]{2,}:(?<properties>[^"\']*)\1\s+content=\1(?<content>[^"\']*)\1[\s/]*>@';
     preg_match_all($pattern, $html, $matches);
     foreach ($matches['properties'] as $key => $value) {
-        if ($value === 'image') {
-            $properties['images'][] = $matches['content'][$key];
+        if (in_array($value, $multi)) {
+            $properties[$value][] = $matches['content'][$key];
         }
         else {
             $properties[$value] = $matches['content'][$key];
