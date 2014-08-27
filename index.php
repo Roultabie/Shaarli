@@ -1752,7 +1752,7 @@ function renderPage()
             $private = (!empty($_GET['private']) && $_GET['private'] === "1" ? 1 : 0); // Get private if it was provided in URL 
             if (($url!='') && parse_url($url,PHP_URL_SCHEME)=='') $url = 'http://'.$url;
             // If this is an HTTP link, we try go get the page to extact the title (otherwise we will to straight to the edit form.)
-            if (empty($title) && parse_url($url,PHP_URL_SCHEME)=='http')
+            if (empty($title) && strpos(parse_url($url,PHP_URL_SCHEME), 'http') !== false)
             {
                 list($status,$headers,$data) = getHTTP($url,4); // Short timeout to keep the application responsive.
                 // FIXME: Decode charset according to specified in either 1) HTTP response headers or 2) <head> in html
