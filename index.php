@@ -1779,21 +1779,47 @@ function renderPage()
                         // Extract meta properties
                         $properties = extractMetaProperties($data);
                         if (is_array($properties)) {
+                            $title = (!empty($properties['title'])) ? $properties['title'] : $title;
                             if (is_array($properties['image'])) {
                                 // Image
                                 $image = $properties['image'][0];
                             }
+                            // Proposition de tags
                             if (empty($_GET['tags']) && is_array($properties['tag'])) {
                                 // Si les tags contiennent des espaces, ont les sépare
                                 $cleanTags = implode(' ', $properties['tag']);
                                 $cleanTags = explode(' ', $cleanTags);
-                                // et on supprime les doublons
-                                $cleanTags = array_unique($cleanTags);
-                                shuffle($cleanTags);
-                                $tags     = implode(' ', array_slice($cleanTags, 0, 5));
+                                // On ajoute les mots du titre pour additionner si possible certains mots clé
+                                $fromTitle = preg_replace('/\W+/', ' ', $title);
+                                $fromTitle = explode(' ', $fromTitle);
+                                if (is_array($fromTitle) && is_array($cleanTags)) {
+                                    $cleanTags = array_merge($cleanTags, $fromTitle);
+                                }
+                                //debug($cleanTags);
+                                // On les classe du tag le plus répété au moins
+                                $sortTags  = array_count_values($cleanTags);
+                                arsort($sortTags);
+                                // On ne récupère les tags que si il y en au moins 2 et si le tag fait plus de 3 caractères
+                                foreach ($sortTags as $key => $value) {
+                                    if ($value > 1 && strlen(trim($key)) > 2) {
+                                        $finalTags[] = trim($key);
+                                    }
+                                }
+                                // Si il ny en a qu'un on prend des tags au hasard
+                                //debug($finalTags);
+                                if (count($finalTags) < 2) {
+                                    $cleanTags = array_unique($cleanTags);
+                                    // On ne récupère les tags que si il fait plus de 3 caractères
+                                    foreach ($cleanTags as $value) {
+                                        if (strlen(trim($key)) > 2) {
+                                            $finalTags[] = $value;
+                                        }
+                                    }
+                                    shuffle($finalTags);
+                                }
+                                $tags = implode(' ', array_slice($finalTags, 0, 5));
                             }
                             // title
-                            $title = (!empty($properties['title'])) ? $properties['title'] : $title;
                         }
  						// Extract title
  						$title = (!empty($title)) ? $title : html_extract_title($data);
