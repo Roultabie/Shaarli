@@ -613,7 +613,12 @@ function extractMetaProperties($html)
     $pattern = '@<meta property=([\'"]?)[\w]{2,}:(?<properties>[^"\']*)\1\s+content=\1(?<content>[^"\']*)\1[\s/]*>@';
     preg_match_all($pattern, $html, $matches);
     foreach ($matches['properties'] as $key => $value) {
+        // Tags for specific type support
+        if ($value === 'type' && !empty($matches['content'][$key])) {
+            $multi[] = $matches['content'][$key] . ':tag';
+        }
         if (in_array($value, $multi)) {
+            $value = preg_replace('/\w+:(\w+)/', '${1}', $value);
             $properties[$value][] = $matches['content'][$key];
         }
         else {
