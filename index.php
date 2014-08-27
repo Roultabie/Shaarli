@@ -1749,7 +1749,7 @@ function renderPage()
             $linkdate = strval(date('Y-m-d H:i:s'));
             $title = (empty($_GET['title']) ? '' : $_GET['title'] ); // Get title if it was provided in URL (by the bookmarklet).
             $description = (empty($_GET['description']) ? '' : $_GET['description']); // Get description if it was provided in URL (by the bookmarklet). [Bronco added that]
-            $tags = (empty($_GET['tags']) ? '' : $_GET['tags'] ); // Get tags if it was provided in URL
+            //$tags = (empty($_GET['tags']) ? '' : $_GET['tags'] ); // Get tags if it was provided in URL
             $private = (!empty($_GET['private']) && $_GET['private'] === "1" ? 1 : 0); // Get private if it was provided in URL 
             if (($url!='') && parse_url($url,PHP_URL_SCHEME)=='') $url = 'http://'.$url;
             // If this is an HTTP link, we try go get the page to extact the title (otherwise we will to straight to the edit form.)
@@ -1775,9 +1775,13 @@ function renderPage()
                         // Extract meta properties
                         $properties = extractMetaProperties($data);
                         if (is_array($properties)) {
-                            if (is_array($properties['images'])) {
+                            if (is_array($properties['image'])) {
                                 // Image
-                                $image = $properties['images'][0];
+                                $image = $properties['image'][0];
+                            }
+                            if (empty($_GET['tags']) && is_array($properties['tag'])) {
+                                shuffle($properties['tag']);
+                                $tags     = implode(' ', array_slice($properties['tag'], 0, 5));
                             }
                         }
  						// Extract title
