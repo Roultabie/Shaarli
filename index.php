@@ -1784,8 +1784,13 @@ function renderPage()
                                 $image = $properties['image'][0];
                             }
                             if (empty($_GET['tags']) && is_array($properties['tag'])) {
-                                shuffle($properties['tag']);
-                                $tags     = implode(' ', array_slice($properties['tag'], 0, 5));
+                                // Si les tags contiennent des espaces, ont les sépare
+                                $cleanTags = implode(' ', $properties['tag']);
+                                $cleanTags = explode(' ', $cleanTags);
+                                // et on supprime les doublons
+                                $cleanTags = array_unique($cleanTags);
+                                shuffle($cleanTags);
+                                $tags     = implode(' ', array_slice($cleanTags, 0, 5));
                             }
                             // title
                             $title = (!empty($properties['title'])) ? $properties['title'] : $title;
