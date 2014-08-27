@@ -1782,9 +1782,11 @@ function renderPage()
                                 shuffle($properties['tag']);
                                 $tags     = implode(' ', array_slice($properties['tag'], 0, 5));
                             }
+                            // title
+                            $title = (!empty($properties['title'])) ? $properties['title'] : $title;
                         }
  						// Extract title
- 						$title = (!empty($properties['title'])) ? $properties['title'] : html_extract_title($data);
+ 						$title = (!empty($title)) ? $title : html_extract_title($data);
 
  						if (!empty($title))
  						{
