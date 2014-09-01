@@ -1110,7 +1110,7 @@ function showRSS()
     // Optionnaly filter the results:
     $linksToDisplay=array();
     if (!empty($_GET['nb'])) {
-        $nblinksToDisplay = ($_GET['nb'] === 'all') ? $LINKSDB->nbLinks : (int)$_GET['nb'];
+        $nblinksToDisplay = ($_GET['nb'] === 'all') ? (int)$LINKSDB->nbLinks : (int)$_GET['nb'];
     }
     else {
         $nblinksToDisplay = 50;
