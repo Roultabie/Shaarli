@@ -916,7 +916,7 @@ class linkdb
         $tags  = str_replace(',', ' ', ($casesensitive ? $tags : strtolower($tags)));
         $terms = explode(' ', $tags);
         foreach ($terms as $key => $term) {
-            $like .= '(tags LIKE "%' . $term . '%") OR ';
+            $like .= '(tags LIKE "%' . $term . '%") AND ';
         }
         $options  = (!empty($this->where)) ? $this->where . ' AND ': '';
         $options .= rtrim($like, ' OR ');
