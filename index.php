@@ -919,7 +919,7 @@ class linkdb
             $like .= '(tags LIKE "%' . $term . '%") AND ';
         }
         $options  = (!empty($this->where)) ? $this->where . ' AND ': '';
-        $options .= rtrim($like, ' OR ');
+        $options .= rtrim($like, ' AND ');
         $this->returnCurrentInfos($options);
         $this->resultCount = $this->returnNb($options);
         $linkdate = $this->returnFirstLink();
