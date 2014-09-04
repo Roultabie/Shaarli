@@ -64,6 +64,7 @@ body {
 }
 #searchForm {
     top: 14px;
+    min-height: 30px;
     position: relative;
     transition: all 0.3s ease-in-out;
     background-color: lightgrey;
@@ -76,6 +77,7 @@ body {
     
 }
 #searchForm:after {
+    float: left;
     content: "▾";
     color: white;
     font-size: .6em;
@@ -83,6 +85,7 @@ body {
     display: block;
     /* With position fixed, hover animation not work */
     /*position: fixed;*/
+    top: 5px;
     z-index: 4;
     width: 100%;
     background-color: grey;
@@ -90,18 +93,64 @@ body {
 }
 #searchForm:hover {
     position: relative;
-    top:42px;
+    top:40px;
     z-index: 4;
 }
 #searchForm:hover:after {
     content: "▴";
 }
-#searchForm form {
+#searchForm span, #searchForm form {
     display: inline-block;
-    /*width: 49%;*/
 }
-#searchForm input[type=text] {
-   /* width: 75%;*/
+#toolBarRight {
+    float: right;
+}
+.onoffswitch {
+position: relative; width: 84px;
+-webkit-user-select:none; -moz-user-select:none; -ms-user-select: none;
+float: left;
+}
+.onoffswitch-checkbox {
+display: none;
+}
+.onoffswitch-label {
+display: block; overflow: hidden; cursor: pointer;
+border: 1px solid #999999; border-radius: 2px;
+}
+.onoffswitch-inner {
+display: block; width: 200%; margin-left: -100%;
+-moz-transition: margin 0.3s ease-in 0s; -webkit-transition: margin 0.3s ease-in 0s;
+-o-transition: margin 0.3s ease-in 0s; transition: margin 0.3s ease-in 0s;
+}
+.onoffswitch-inner:before, .onoffswitch-inner:after {
+display: block; float: left; width: 50%; height: 20px; padding: 0; line-height: 20px;
+font-size: 13px; color: white; font-family: Trebuchet, Arial, sans-serif; font-weight: bold;
+-moz-box-sizing: border-box; -webkit-box-sizing: border-box; box-sizing: border-box;
+}
+.onoffswitch-inner:before {
+content: "Tags";
+padding-left: 20px;
+background-color: #EDEDED; color: #575757;
+}
+.onoffswitch-inner:after {
+content: "Content";
+padding-right: 7px;
+background-color: #FFFFFF; color: #575757;
+text-align: right;
+}
+.onoffswitch-switch {
+display: block; width: 17px; margin: 3px;
+background: #FFFFFF;
+border: 1px solid #999999; border-radius: 2px;
+position: absolute; top: 0; bottom: 0; right: 60px;
+-moz-transition: all 0.3s ease-in 0s; -webkit-transition: all 0.3s ease-in 0s;
+-o-transition: all 0.3s ease-in 0s; transition: all 0.3s ease-in 0s;
+}
+.onoffswitch-checkbox:checked + .onoffswitch-label .onoffswitch-inner {
+margin-left: 0;
+}
+.onoffswitch-checkbox:checked + .onoffswitch-label .onoffswitch-switch {
+right: 0px;
 }
 .paging div, .paging span, .paging a, .paging form, .paging input {
     display: inline-block;
