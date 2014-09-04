@@ -3,71 +3,80 @@
 <head>{include="includes"}</head>
 <body>
 {include="page.header"}
-<div id="searchForm">
-    <form method="GET" name="searchform"><input type="text" name="searchterm" value=""> <input type="submit" value="Search"></form>
-    <form method="GET" name="tagfilter"><input type="text" name="searchtags" value=""> <input type="submit" value="Filter by tag"></form>
-</div>
-<div id="linklist">
-    {include="linklist.paging"}
-    {if="count($links)==0"}
-        <div id="searchcriteria">
-            Nothing found.
-        </div>
-    {else}
-        {if="$search_type=='fulltext'"}
+<div id="linklistpage">
+    <div id="searchForm">
+        <form method="GET" name="searchform"><input type="text" name="searchterm" value=""> <input type="submit" value="Search"></form>
+        <form method="GET" name="tagfilter"><input type="text" name="searchtags" value=""> <input type="submit" value="Filter by tag"></form>
+    </div>
+    <div id="linklist">
+        {include="linklist.paging"}
+        {if="count($links)==0"}
             <div id="searchcriteria">
-                {$result_count} results for <span>{$search_crits}</span>
+                Nothing found.
             </div>
-        {/if}
-        {if="$search_type=='tags'"}
-            <div id="searchcriteria">
-                {$result_count} results for tags <span>{loop="search_crits"}
-                    <span title="Remove tag"><a href="?removetag={$value|htmlspecialchars}">{$value|htmlspecialchars} <span>x</span></a></span>
-                {/loop}</span>
-            </div>
-        {/if}
-    {/if}
-    <ul>
-        {loop="links"}
-        <li{if="$value.class"} class="{$value.class}"{/if}>
-            <a name="{$value.linkdate|smallHash}" id="{$value.linkdate|smallHash}"></a>
-            <div>
-                {$value.thumbnail|thumbnail}
-            </div>
-            <div>
-                {if="isLoggedIn()"}
-                    <div>
-                        <form method="GET"><input type="hidden" name="edit_link" value="{$value.linkdate}"><input type="image" alt="Edit" src="images/edit_icon.png#" title="Edit"></form>
-                        <form method="POST"><input type="hidden" name="lf_linkdate" value="{$value.linkdate}">
-                        <input type="hidden" name="token" value="{$token}"><input type="hidden" name="delete_link"><input type="image" alt="Delete" src="images/delete_icon.png#" title="Delete" onClick="return confirmDeleteLink();"></form>
-                    </div>
-                {/if}
-                <span><a href="{$redirector}{$value.url|htmlspecialchars}">{$value.title|htmlspecialchars}</a></span>
-                {if="$value.description"}
-                <div {if condition="$search_type=='permalink'"} class="permalinkSearch"{/if}>
-                    {$value.description}
+        {else}
+            {if="$search_type=='fulltext'"}
+                <div id="searchcriteria">
+                    {$result_count} results for <span>{$search_crits}</span>
                 </div>
-                {/if}
-                {if="!$GLOBALS['config']['HIDE_TIMESTAMPS'] || isLoggedIn()"}
-                    <span title="Permalink"><a href="?{$value.linkdate|smallHash}">{$value.linkdate|linkdate2locale} - permalink</a> - </span>
-                {else}
-                    <span title="Short link here"><a href="?{$value.linkdate|smallHash}">permalink</a> - </span>
-                {/if}
+            {/if}
+            {if="$search_type=='tags'"}
+                <div id="searchcriteria">
+                    {$result_count} results for tags <span>{loop="search_crits"}
+                        <span title="Remove tag"><a href="?removetag={$value|htmlspecialchars}">{$value|htmlspecialchars} <span>x</span></a></span>
+                    {/loop}</span>
+                </div>
+            {/if}
+        {/if}
+        <ul>
+            {loop="links"}
+            <li>
+                <a name="{$value.linkdate|smallHash}" id="{$value.linkdate|smallHash}"></a>
                 <div>
-                    <a href="http://qrfree.kaywa.com/?l=1&s=8&d={$scripturl|urlencode}%3F{$value.linkdate|smallHash}" 
-                    onclick="showQrCode(this); return false;" class="qrcode" data-permalink="{$scripturl}?{$value.linkdate|smallHash}"><img src="images/qrcode.png#" width="13" height="13" title="QR-Code"></a>
-                </div> - 
-                <span title="Short link">{$value.url|htmlspecialchars}</span>
-                {if="$value.tags"}
-                    <div>
-                        {loop="value.taglist"}<span title="Add tag"><a href="?addtag={$value|urlencode}">{$value|htmlspecialchars}</a></span> {/loop}
+                    {$value.thumbnail|thumbnail}
+                </div>
+                <div>
+                    {if="isLoggedIn()"}
+                        <div class="actions">
+                            <form method="GET">
+                                <input type="hidden" name="edit_link" value="{$value.linkdate}">
+                                <input type="image" alt="Edit" src="images/edit_icon.png#" title="Edit">
+                            </form>
+                            <form method="POST">
+                                <input type="hidden" name="lf_linkdate" value="{$value.linkdate}">
+                                <input type="hidden" name="token" value="{$token}">
+                                <input type="hidden" name="delete_link">
+                                <input type="image" alt="Delete" src="images/delete_icon.png#" title="Delete" onClick="return confirmDeleteLink();">
+                            </form>
+                        </div>
+                    {/if}
+                    <span><a href="{$redirector}{$value.url|htmlspecialchars}">{$value.title|htmlspecialchars}</a></span>
+                    {if="$value.description"}
+                    <div {if condition="$search_type=='permalink'"} class="permalinkSearch"{/if}>
+                        {$value.description}
                     </div>
-                {/if}
-            </div>
-        </li>
-    {/loop}
-    </ul>
-    {include="linklist.paging"}
+                    {/if}
+                    {if="!$GLOBALS['config']['HIDE_TIMESTAMPS'] || isLoggedIn()"}
+                        <span title="Permalink"><a href="?{$value.linkdate|smallHash}">{$value.linkdate|linkdate2locale} - permalink</a> - </span>
+                    {else}
+                        <span title="Short link here"><a href="?{$value.linkdate|smallHash}">permalink</a> - </span>
+                    {/if}
+                    <div>
+                        <a href="http://qrfree.kaywa.com/?l=1&s=8&d={$scripturl|urlencode}%3F{$value.linkdate|smallHash}" 
+                        onclick="showQrCode(this); return false;" class="qrcode" data-permalink="{$scripturl}?{$value.linkdate|smallHash}"><img src="images/qrcode.png#" width="13" height="13" title="QR-Code"></a>
+                    </div> - 
+                    <span title="Short link">{$value.url|htmlspecialchars}</span>
+                    {if="$value.tags"}
+                        <div>
+                            {loop="value.taglist"}<span title="Add tag"><a href="?addtag={$value|urlencode}">{$value|htmlspecialchars}</a></span> {/loop}
+                        </div>
+                    {/if}
+                </div>
+            </li>
+        {/loop}
+        </ul>
+        {include="linklist.paging"}
+    </div>
 </div>
     {include="page.footer"} 
 <script language="JavaScript">
