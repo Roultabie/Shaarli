@@ -18,12 +18,10 @@
             </a>
         </span>
         {/if}
-        <span>
-            Links per page: 
+        <span>Links per page: 
             <form method="GET">
-                <input type="text" name="linksperpage">
-            </form>
-        </span>
+                <input type="number" min="1" max="{$linkcount}" value="20" size="2" name="linksperpage">
+            </form></span>
     </div>
     <div id="linklist">
         {include="linklist.paging"}
