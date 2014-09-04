@@ -1,3 +1,25 @@
+* {
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+}
+body {
+    margin: 0;
+    padding: 0;
+    font-family: "Trebuchet MS",Verdana,Arial,Helvetica,sans-serif;
+    font-size:.8em;
+    word-wrap: break-word;
+}
+#header {
+    position: fixed;
+    z-index: 4;
+    width: 100%;
+    background-color: #2d3e50;
+    padding: 0.5em;
+    /*text-align: center;*/
+    box-shadow: 0 1px 1px rgba(0,0,0, 0.10);
+    font-size: 1.3em;
+}
 #header ul, #header li, #header a, #header span {
     display: inline-block;
 }
@@ -5,6 +27,45 @@
     list-style-type: none;
     margin: 0;
     padding: 0;
+}
+#header span:first-child a {
+    color: white;
+    font-weight: 400;
+    font-size: 120%;
+    text-align: left;
+    margin-right: .5em;
+}
+#header span + span {
+    margin-top: .1em;
+    font-style: italic;
+}
+#header span + span:before {
+    content: "(";
+}
+#header span + span:after {
+    content: ")";
+}
+#header span {
+    float: left;
+}
+#header ul {
+    float: right;
+}
+#header li a {
+    color: #6FBEF3;
+}
+#header li a:hover, #header li a:focus {
+    color: #fff;
+}
+#header li {
+    margin-right: .5em;
+}
+#header li:last-child {
+    margin-right: 0;
+}
+#searchForm, #linklist, #footer {
+    top: 42px;
+    position: relative;
 }
 #searchForm form {
     display: inline-block;

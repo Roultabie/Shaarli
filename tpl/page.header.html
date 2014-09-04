@@ -1,5 +1,8 @@
 <div id="header">
     <span><a href="?">{$shaarlititle|htmlspecialchars}</a></span>
+    {if="!empty($linkcount)"}
+    <span>{$linkcount} links</span>
+    {/if}
     <ul>
         {if="!empty($_GET['source']) && $_GET['source']=='bookmarklet'"}
         {else}
@@ -21,7 +24,4 @@
         <li><a href="?do=daily">Daily</a></li>
         {/if}
     </ul>
-    {if="!empty($linkcount)"}
-    <span>{$linkcount} links</span>
-    {/if}
 </div>
