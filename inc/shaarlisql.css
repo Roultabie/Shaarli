@@ -1,0 +1,29 @@
+#header ul, #header li, #header a, #header span {
+    display: inline-block;
+}
+#header ul, #header li {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+#searchForm form {
+    display: inline-block;
+    width: 49%;
+}
+#searchForm input[type=text] {
+    width: 75%;
+}
+.paging div, .paging span, .paging a, .paging form, .paging input {
+    display: inline-block;
+}
+#linklist ul, #linklist li {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+.actions, .actions form, .actions input {
+    display: inline-block;
+}
+#footer a, #footer span {
+    display: inline-block;
+}
