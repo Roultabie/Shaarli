@@ -12,11 +12,10 @@ body {
 }
 #header {
     position: fixed;
-    z-index: 4;
+    z-index: 10;
     width: 100%;
     background-color: #2d3e50;
     padding: 0.5em;
-    /*text-align: center;*/
     box-shadow: 0 1px 1px rgba(0,0,0, 0.10);
     font-size: 1.3em;
 }
@@ -63,9 +62,38 @@ body {
 #header li:last-child {
     margin-right: 0;
 }
-#searchForm, #linklist, #footer {
-    top: 42px;
+#searchForm {
+    top: 14px;
     position: relative;
+    transition: all 0.3s ease-in-out;
+    background-color: lightgrey;
+    
+}
+#linklist, #footer {
+    top: 16px;
+    position: relative;
+    
+}
+#searchForm:after {
+    content: "▾";
+    color: white;
+    font-size: .6em;
+    text-align: center;
+    display: block;
+    /* With position fixed, hover animation not work */
+    /*position: fixed;*/
+    z-index: 4;
+    width: 100%;
+    background-color: grey;
+    pointer-events: none;
+}
+#searchForm:hover {
+    position: relative;
+    top:42px;
+    z-index: 4;
+}
+#searchForm:hover:after {
+    content: "▴";
 }
 #searchForm form {
     display: inline-block;
