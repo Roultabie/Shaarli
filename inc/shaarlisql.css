@@ -67,6 +67,7 @@ body {
     position: relative;
     transition: all 0.3s ease-in-out;
     background-color: lightgrey;
+    z-index: 4;
     
 }
 #linklist, #footer {
@@ -97,10 +98,10 @@ body {
 }
 #searchForm form {
     display: inline-block;
-    width: 49%;
+    /*width: 49%;*/
 }
 #searchForm input[type=text] {
-    width: 75%;
+   /* width: 75%;*/
 }
 .paging div, .paging span, .paging a, .paging form, .paging input {
     display: inline-block;
