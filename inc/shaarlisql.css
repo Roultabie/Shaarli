@@ -18,6 +18,10 @@ body {
     padding: 0.5em;
     box-shadow: 0 1px 1px rgba(0,0,0, 0.10);
     font-size: 1.3em;
+    text-transform: uppercase;
+}
+#header a {
+    text-decoration: none;
 }
 #header ul, #header li, #header a, #header span {
     display: inline-block;
@@ -162,13 +166,51 @@ right: 0px;
     padding: .5em;
     background-color: lightgrey;
 }
-#linklist ul, #linklist li {
-    list-style-type: none;
-    margin: 0;
-    padding: 0;
+#linklist section {
+    background-color: #fff;
 }
-.actions, .actions form, .actions input {
+#linklist article {
+    float: left;
+    display: block;
+    width: 100%;
+    padding: 5px;
+}
+#linklist article:nth-child(even) {
+    background-color: #e6e6e6;
+}
+.linkThumbnail {
+    float: right;
+}
+.linkContent {
+    display: block;
+    float: left;
+    width: calc(100% - 180px);
+}
+.linkActions {
+    position: absolute;
+    margin-top: 10px;
+}
+.linkContent h2, .linkContent span, .linkContent p {
+    margin-left: 30px;
     display: inline-block;
+    width: 100%;
+}
+.linkContent h2 {
+    margin-top: 0;
+}
+.linkTags {
+    margin-top: 5px;
+}
+.linkTags span {
+    display: inline;
+    margin-left: 0;
+}
+#linklist .linkInfos span {
+    display: inline;
+    margin-left: 0;
+}
+.linkActions, .linkActions form, .linkActions input {
+    /*display: inline-block;*/
 }
 #footer a, #footer span {
     display: inline-block;
