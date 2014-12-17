@@ -865,17 +865,17 @@ class linkdb
     // Returns the link for a given URL (if it exists). false it does not exist.
     public function getLinkFromUrl($url)
     {
-        $query = "SELECT url 
+        $query = "SELECT title, url, description, private, linkdate, smallhash, tags, image, author 
                   FROM " . $GLOBALS['dbTable'] . " 
                   WHERE url = '" . $url . "';";
         $stmt  = dbConnexion::getInstance()->prepare($query);
         $stmt->execute();
-        $filtered = $stmt->fetchAll(PDO::FETCH_COLUMN, 0);
+        $filtered = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $stmt->closeCursor();
         $stmt = NULL;
 
         if (is_array($filtered)) {
-            return $filtered[0];
+            return $filtered;
         }
         return false;
     }
@@ -1748,7 +1748,7 @@ function renderPage()
 
         $link_is_new = false;
         $link = $LINKSDB->getLinkFromUrl($url); // Check if URL is not already in database (in this case, we will edit the existing link)
-        if (!$link)
+        if (!is_array($link))
         {
             $link_is_new = true;  // This is a new link
             $linkdate = strval(date('Y-m-d H:i:s'));
@@ -1835,7 +1835,10 @@ function renderPage()
             if ($url=='') $url='?'.smallHash($linkdate); // In case of empty URL, this is just a text (with a link that point to itself)
             $link = array('linkdate'=>$linkdate,'image'=>$image,'title'=>$title,'url'=>$url,'description'=>$description,'tags'=>$tags,'private'=>$private);
         }
-
+        else {
+            $link = $link[0];
+        }
+        //var_dump($link);
         $PAGE = new pageBuilder;
         $PAGE->assign('linkcount',$LINKSDB->nbLinks);
         $PAGE->assign('link',$link);
