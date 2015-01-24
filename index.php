@@ -2332,6 +2332,15 @@ function install()
             $pass = array('00000', '42S01');
             if (in_array($errorCode, $pass)) {
                 if ($errorCode === '00000') {
+                    $query = "INSERT INTO '" . $GLOBALS['dbTable'] . "' (`name`, `hash`, `salt`, `level`, `group`) 
+                              VALUES (:name, :hash, :salt, :level, :group);";
+                    $stmt  = dbConnexion::getInstance()->prepare($query);
+                    $stmt->bindValue(':name', $GLOBALS['login'], PDO::PARAM_STR);
+                    $stmt->bindValue(':hash', $GLOBALS['hash'], PDO::PARAM_STR);
+                    $stmt->bindValue(':salt', $GLOBALS['salt'], PDO::PARAM_STR);
+                    $stmt->bindValue(':level', 1, PDO::PARAM_INT);
+                    $stmt->bindValue(':group', 0, PDO::PARAM_INT);
+                    $stmt->execute();
                     $query = "INSERT INTO `" . $GLOBALS['dbTable'] . "` (`title`, `url`, `description`, `private`, `linkdate`, `smallhash`, `tags`, `author`) 
                               VALUES (:title, :url, :description, :private, :linkdate, :smallhash, :tags, :author);";
                     $stmt = dbConnexion::getInstance()->prepare($query);
