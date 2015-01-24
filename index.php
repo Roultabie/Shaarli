@@ -2303,7 +2303,7 @@ function install()
         $GLOBALS['dbUser'] = $_POST['sqluser'];
         $GLOBALS['dbPass'] = $_POST['sqlpassword'];
         if ($stmt = dbConnexion::getInstance()) {
-            $query = "CREATE TABLE " . $GLOBALS['dbTable'] . "(
+            $links = "CREATE TABLE " . $GLOBALS['dbTable'] . "(
                                    `linkdate` datetime not null,
                                    `title` varchar(255),
                                    `url` varchar(255),
@@ -2316,9 +2316,17 @@ function install()
                                     PRIMARY KEY (`linkdate`),
                                     KEY `linkdate` (`linkdate`)
                                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
-            $stmt = dbConnexion::getInstance()->prepare($query);
+            $users = "CREATE TABLE `users` (
+                                   `id` tinyint(4) not null,
+                                   `name` varchar(255),
+                                   `level` tinyint(4),
+                                   `group` tinyint(4),
+                                   UNIQUE KEY (`id`)
+                                ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
+            $stmt = dbConnexion::getInstance()->prepare($links);
             $stmt->execute();
             $errorCode = $stmt->errorCode();
+            $stmt = dbConnexion::getInstance()->prepare($users);
             $stmt->closeCursor();
             $stmt = NULL;
             $pass = array('00000', '42S01');
