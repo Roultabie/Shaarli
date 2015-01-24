@@ -2319,6 +2319,8 @@ function install()
             $users = "CREATE TABLE `users` (
                                    `id` tinyint(4) not null,
                                    `name` varchar(255),
+                                   `hash` varchar(255),
+                                   `salt` varchar(255),
                                    `level` tinyint(4),
                                    `group` tinyint(4),
                                    UNIQUE KEY (`id`)
