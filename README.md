@@ -1,1 +1,1 @@
-ShaarliSQL moved to http://gitweb.gorgones.net/daniel.douat/shaarliSQL
+Project moved to http://gitweb.gorgones.net/daniel.douat/shaarliSQL
